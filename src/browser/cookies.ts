@@ -16,9 +16,10 @@ export async function syncCookies(
     inlineCookies?: CookieParam[] | null;
     cookiePath?: string | null;
     waitMs?: number;
+    origins?: string[] | null;
   } = {},
 ) {
-  const { allowErrors = false, filterNames, inlineCookies, cookiePath, waitMs = 0 } = options;
+  const { allowErrors = false, filterNames, inlineCookies, cookiePath, waitMs = 0, origins } = options;
   try {
     // Learned: inline cookies are the most deterministic (avoid Keychain + profile ambiguity).
     const cookies = inlineCookies?.length
@@ -29,6 +30,7 @@ export async function syncCookies(
           filterNames ?? undefined,
           cookiePath ?? undefined,
           waitMs,
+          origins ?? undefined,
           logger,
         );
     if (!cookies.length) {
@@ -65,15 +67,16 @@ async function readChromeCookiesWithWait(
   filterNames: string[] | undefined,
   cookiePath: string | null | undefined,
   waitMs: number,
+  origins: string[] | undefined,
   logger: BrowserLogger,
 ): Promise<CookieParam[]> {
   if (waitMs <= 0) {
-    return readChromeCookies(url, profile, filterNames, cookiePath);
+    return readChromeCookies(url, profile, filterNames, cookiePath, origins);
   }
   let cookies: CookieParam[] = [];
   let firstError: unknown;
   try {
-    cookies = await readChromeCookies(url, profile, filterNames, cookiePath);
+    cookies = await readChromeCookies(url, profile, filterNames, cookiePath, origins);
   } catch (error) {
     firstError = error;
   }
@@ -90,7 +93,7 @@ async function readChromeCookiesWithWait(
     logger(`[cookies] No cookies found; waiting ${waitLabel} then retrying once.`);
   }
   await delay(waitMs);
-  return readChromeCookies(url, profile, filterNames, cookiePath);
+  return readChromeCookies(url, profile, filterNames, cookiePath, origins);
 }
 
 async function readChromeCookies(
@@ -98,8 +101,9 @@ async function readChromeCookies(
   profile?: string | null,
   filterNames?: string[],
   cookiePath?: string | null,
+  extraOrigins?: string[],
 ): Promise<CookieParam[]> {
-  const origins = Array.from(new Set([stripQuery(url), ...COOKIE_URLS]));
+  const origins = Array.from(new Set([stripQuery(url), ...COOKIE_URLS, ...(extraOrigins ?? [])]));
   const chromeProfile = cookiePath ?? profile ?? undefined;
   const timeoutMs = readDuration('ORACLE_COOKIE_LOAD_TIMEOUT_MS', 5_000);
 

@@ -48,12 +48,20 @@ export function resolveBrowserConfig(config: BrowserAutomationConfig | undefined
     (process.env.ORACLE_BROWSER_ALLOW_COOKIE_ERRORS ?? '').trim() === '1';
   const rawUrl = config?.chatgptUrl ?? config?.url ?? DEFAULT_BROWSER_CONFIG.url;
   const normalizedUrl = normalizeChatgptUrl(rawUrl ?? DEFAULT_BROWSER_CONFIG.url, DEFAULT_BROWSER_CONFIG.url);
-  const desiredModel = config?.desiredModel ?? DEFAULT_BROWSER_CONFIG.desiredModel ?? DEFAULT_MODEL_TARGET;
+  const desiredModel =
+    config?.desiredModel !== undefined
+      ? config.desiredModel
+      : DEFAULT_BROWSER_CONFIG.desiredModel ?? DEFAULT_MODEL_TARGET;
   const modelStrategy =
     normalizeBrowserModelStrategy(config?.modelStrategy) ??
     DEFAULT_BROWSER_CONFIG.modelStrategy ??
     DEFAULT_MODEL_STRATEGY;
-  if (modelStrategy === 'select' && isTemporaryChatUrl(normalizedUrl) && /\bpro\b/i.test(desiredModel)) {
+  if (
+    modelStrategy === 'select' &&
+    isTemporaryChatUrl(normalizedUrl) &&
+    typeof desiredModel === 'string' &&
+    /\bpro\b/i.test(desiredModel)
+  ) {
     throw new Error(
       'Temporary Chat mode does not expose Pro models in the ChatGPT model picker. ' +
         'Remove "temporary-chat=true" from your browser URL, or use a non-Pro model label (e.g. "GPT-5.2").',
