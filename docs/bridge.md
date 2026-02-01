@@ -63,7 +63,7 @@ If you’re physically on a Linux desktop and just want Oracle to reuse a local 
 
 ```bash
 ORACLE_HOME_DIR=~/.oracle-local \
-ORACLE_BROWSER_PROFILE_DIR=~/.oracle-local/browser-profile \
+ORACLE_BROWSER_PROFILE_DIR=~/.oracle-local/chrome \
 oracle --engine browser --browser-manual-login --browser-keep-browser -p "hello"
 ```
 

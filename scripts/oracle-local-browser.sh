@@ -2,7 +2,7 @@
 set -euo pipefail
 
 : "${ORACLE_HOME_DIR:=$HOME/.oracle-local}"
-: "${ORACLE_BROWSER_PROFILE_DIR:=$ORACLE_HOME_DIR/browser-profile}"
+: "${ORACLE_BROWSER_PROFILE_DIR:=$ORACLE_HOME_DIR/chrome}"
 
 export ORACLE_HOME_DIR
 export ORACLE_BROWSER_PROFILE_DIR
