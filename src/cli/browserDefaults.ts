@@ -37,13 +37,18 @@ export function applyBrowserDefaultsFromConfig(
   getSource: SourceGetter,
   model?: string,
 ): void {
-  const browser = config.browser;
-  if (!browser) return;
-
   const isUnset = (key: keyof BrowserDefaultsOptions): boolean => {
     const source = getSource(key);
     return source === undefined || source === 'default';
   };
+
+  const browser = config.browser;
+  if (!browser) {
+    if (isUnset('browserManualLogin')) {
+      options.browserManualLogin = true;
+    }
+    return;
+  }
 
   const normalizedModel = (model ?? '').toLowerCase();
   const isGrok = normalizedModel.startsWith('grok');
