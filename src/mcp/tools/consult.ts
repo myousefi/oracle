@@ -7,6 +7,7 @@ import type { BrowserSessionConfig, SessionModelRun } from '../../sessionStore.j
 import { sessionStore } from '../../sessionStore.js';
 import { resolveRemoteServiceConfig } from '../../remote/remoteServiceConfig.js';
 import { createRemoteBrowserExecutor } from '../../remote/client.js';
+import { createGrokWebExecutor } from '../../grok-web/index.js';
 import type { BrowserSessionRunnerDeps } from '../../browser/sessionRunner.js';
 
 async function readSessionLogTail(sessionId: string, maxBytes: number): Promise<string | null> {
@@ -25,7 +26,7 @@ import { CHATGPT_URL } from '../../browser/constants.js';
 import { consultInputSchema } from '../types.js';
 import { loadUserConfig } from '../../config.js';
 import { resolveNotificationSettings } from '../../cli/notifier.js';
-import { mapModelToBrowserLabel, resolveBrowserModelLabel } from '../../cli/browserConfig.js';
+import { mapModelToBrowserLabel, resolveBrowserModelLabel, resolveGrokBrowserLabel } from '../../cli/browserConfig.js';
 
 // Use raw shapes so the MCP SDK (with its bundled Zod) wraps them and emits valid JSON Schema.
 const consultInputShape = {
@@ -51,7 +52,7 @@ const consultInputShape = {
     .enum(['api', 'browser'])
     .optional()
     .describe(
-      'Execution engine. `api` uses OpenAI/other providers. `browser` automates the ChatGPT web UI (supports attachments and ChatGPT-only model labels).',
+      'Execution engine. `api` uses OpenAI/other providers. `browser` automates ChatGPT/Grok in Chrome or uses the Gemini web client (attachments supported where available).',
     ),
   browserModelLabel: z
     .string()
@@ -200,6 +201,10 @@ export function registerConsultTool(server: McpServer): void {
         env: process.env,
       });
       const cwd = process.cwd();
+      const grokBrowserEnabled = ['1', 'true', 'yes', 'on'].includes(
+        (process.env.ORACLE_BROWSER_GROK ?? '').trim().toLowerCase(),
+      );
+      const isGrokModel = runOptions.model.startsWith('grok');
 
       const resolvedRemote = resolveRemoteServiceConfig({ userConfig, env: process.env });
       const browserGuard = ensureBrowserAvailable(resolvedEngine, { remoteHost: resolvedRemote.host });
@@ -211,6 +216,14 @@ export function registerConsultTool(server: McpServer): void {
       }
 
       let browserDeps: BrowserSessionRunnerDeps | undefined;
+      if (resolvedEngine === 'browser' && isGrokModel && resolvedRemote.host) {
+        return {
+          isError: true,
+          content: textContent(
+            `Grok browser automation is not supported with remote hosts yet. Disable remote browser routing or use the API engine instead.`,
+          ),
+        };
+      }
       if (resolvedEngine === 'browser' && resolvedRemote.host) {
         if (!resolvedRemote.token) {
           return {
@@ -223,17 +236,25 @@ export function registerConsultTool(server: McpServer): void {
         browserDeps = {
           executeBrowser: createRemoteBrowserExecutor({ host: resolvedRemote.host, token: resolvedRemote.token }),
         };
+      } else if (resolvedEngine === 'browser' && isGrokModel && grokBrowserEnabled) {
+        browserDeps = {
+          executeBrowser: createGrokWebExecutor({}),
+        };
       }
 
       let browserConfig: BrowserSessionConfig | undefined;
       if (resolvedEngine === 'browser') {
         const envProfileDir = (process.env.ORACLE_BROWSER_PROFILE_DIR ?? '').trim();
         const hasProfileDir = envProfileDir.length > 0;
-        const preferredLabel = (browserModelLabel ?? model)?.trim();
+        const explicitLabel = browserModelLabel?.trim();
+        const modelLabelFallback = model?.trim();
         const isChatGptModel = runOptions.model.startsWith('gpt-') && !runOptions.model.includes('codex');
+        const grokDerivedLabel = !explicitLabel && model ? resolveGrokBrowserLabel(model) : null;
         const desiredModelLabel = isChatGptModel
           ? mapModelToBrowserLabel(runOptions.model)
-          : resolveBrowserModelLabel(preferredLabel, runOptions.model);
+          : isGrokModel
+            ? explicitLabel || grokDerivedLabel
+            : explicitLabel || modelLabelFallback || runOptions.model;
         const configuredUrl = userConfig.browser?.chatgptUrl ?? userConfig.browser?.url ?? undefined;
         // Default to manual-login when a persistent profile dir is provided (common for Codex/Claude).
         const manualLogin = hasProfileDir;
@@ -246,7 +267,7 @@ export function registerConsultTool(server: McpServer): void {
           manualLogin,
           manualLoginProfileDir: manualLogin ? envProfileDir : null,
           thinkingTime: browserThinkingTime,
-          desiredModel: desiredModelLabel || mapModelToBrowserLabel(runOptions.model),
+          desiredModel: desiredModelLabel ?? null,
         };
       }
 
