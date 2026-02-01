@@ -185,6 +185,7 @@ interface RestartCommandOptions {
 interface BrowserLoginCliOptions {
   url?: string;
   model?: string;
+  parentModel?: string;
   profileDir?: string;
   debugPort?: number;
 }
@@ -667,16 +668,18 @@ browserLoginOptions(
   program
     .command('login')
     .description('Open the Oracle browser profile for manual login.')
-).action(async (commandOptions) => {
-  await runBrowserLoginCommand(commandOptions, 'login');
+).action(async (commandOptions, command: Command) => {
+  const parentModel = command.parent?.opts?.().model as string | undefined;
+  await runBrowserLoginCommand({ ...commandOptions, parentModel }, 'login');
 });
 
 browserLoginOptions(
   program
     .command('run-browser')
     .description('Launch or reuse the Oracle browser profile and keep Chrome open.')
-).action(async (commandOptions) => {
-  await runBrowserLoginCommand(commandOptions, 'run-browser');
+).action(async (commandOptions, command: Command) => {
+  const parentModel = command.parent?.opts?.().model as string | undefined;
+  await runBrowserLoginCommand({ ...commandOptions, parentModel }, 'run-browser');
 });
 
 const sessionCommand = program
@@ -761,6 +764,7 @@ program
 function resolveBrowserLoginModel(options: BrowserLoginCliOptions, userConfig: UserConfig): ModelName {
   const modelInput =
     normalizeModelOption(options.model) ||
+    normalizeModelOption(options.parentModel) ||
     normalizeModelOption(userConfig.model) ||
     DEFAULT_MODEL;
   return inferModelFromLabel(modelInput);
