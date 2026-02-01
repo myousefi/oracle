@@ -111,6 +111,9 @@ export function applyBrowserDefaultsFromConfig(
   if (isUnset('browserKeepBrowser') && browser.keepBrowser !== undefined) {
     options.browserKeepBrowser = browser.keepBrowser;
   }
+  if (isUnset('browserManualLogin') && browser.manualLogin === undefined) {
+    options.browserManualLogin = true;
+  }
   if (isUnset('browserModelStrategy') && browser.modelStrategy !== undefined) {
     options.browserModelStrategy = browser.modelStrategy;
   }

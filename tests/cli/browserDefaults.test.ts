@@ -131,6 +131,15 @@ describe('applyBrowserDefaultsFromConfig', () => {
     expect(options.browserManualLogin).toBe(true);
   });
 
+  test('defaults to manual-login when not explicitly configured', () => {
+    const options: BrowserDefaultsOptions = {};
+    const config: UserConfig = {};
+
+    applyBrowserDefaultsFromConfig(options, config, source, 'gpt-5.2');
+
+    expect(options.browserManualLogin).toBe(true);
+  });
+
   test('uses grokUrl for grok models when URL flags are absent', () => {
     const options: BrowserDefaultsOptions = {};
     const config: UserConfig = {
