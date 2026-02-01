@@ -119,12 +119,25 @@ export interface StoredRunOptions {
   zombieUseLastActivity?: boolean;
   /** Whether the run preferred to stay attached (true) or detach (false). */
   waitPreference?: boolean;
+  /** Browser executor selector for detached runs (persisted for session replay/diagnostics). */
+  browserExecutor?: 'chatgpt' | 'remote' | 'grok' | 'gemini';
+  /** Remote host used for browser automation (when browserExecutor is remote). */
+  remoteHost?: string | null;
   youtube?: string;
   generateImage?: string;
   editImage?: string;
   outputPath?: string;
   aspectRatio?: string;
   geminiShowThoughts?: boolean;
+  /** Gemini web options (newer shape; prefer this when present). */
+  geminiWeb?: {
+    youtube?: string;
+    generateImage?: string;
+    editImage?: string;
+    outputPath?: string;
+    showThoughts?: boolean;
+    aspectRatio?: string;
+  };
 }
 
 export interface SessionMetadata {

@@ -47,4 +47,22 @@ describe('shouldDetachSession', () => {
     });
     expect(pro52).toBe(true);
   });
+
+  test('allows detach for browser runs only when no-wait is requested', () => {
+    const wait = shouldDetachSession({
+      engine: 'browser',
+      model: 'gpt-5.2',
+      waitPreference: true,
+      disableDetachEnv: false,
+    });
+    expect(wait).toBe(false);
+
+    const noWait = shouldDetachSession({
+      engine: 'browser',
+      model: 'gpt-5.2',
+      waitPreference: false,
+      disableDetachEnv: false,
+    });
+    expect(noWait).toBe(true);
+  });
 });
