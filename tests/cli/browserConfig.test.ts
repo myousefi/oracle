@@ -82,11 +82,20 @@ describe('buildBrowserConfig', () => {
     expect(config.desiredModel).toBe('GPT-5.2');
   });
 
-  test('maps thinking Gemini model to thinking label', async () => {
+  test('passes through Gemini model names for web executor', async () => {
     const config = await buildBrowserConfig({
       model: 'gemini-3-pro',
     });
-    expect(config.desiredModel).toBe('Gemini 3 Pro');
+    expect(config.desiredModel).toBe('gemini-3-pro');
+  });
+
+  test('forces grok runs to ignore browser model selection', async () => {
+    const config = await buildBrowserConfig({
+      model: 'grok-4.1',
+      browserModelStrategy: 'select',
+    });
+    expect(config.modelStrategy).toBe('ignore');
+    expect(config.desiredModel).toBeNull();
   });
 
   test('trims whitespace around override labels', async () => {

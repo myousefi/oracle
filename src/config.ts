@@ -19,6 +19,8 @@ export interface BrowserConfigDefaults {
   chromeCookiePath?: string | null;
   chatgptUrl?: string | null;
   url?: string;
+  /** Grok base URL override (used when model is Grok). */
+  grokUrl?: string | null;
   /** Delegate browser automation to a remote `oracle serve` instance (host:port). */
   remoteHost?: string | null;
   /** Access token clients must provide to the remote `oracle serve` instance. */

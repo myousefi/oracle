@@ -474,7 +474,10 @@ async function askOracleFlow(version: string, userConfig: UserConfig): Promise<v
           browserCookiePath: answers.chromeCookiePath,
           browserHideWindow: answers.hideWindow,
           browserKeepBrowser: answers.keepBrowser,
-          browserModelLabel: resolveBrowserModelLabel(undefined, answers.model),
+          browserModelLabel:
+            answers.model.startsWith('gpt-') && !answers.model.includes('codex')
+              ? resolveBrowserModelLabel(undefined, answers.model)
+              : undefined,
           model: answers.model,
         })
       : undefined;

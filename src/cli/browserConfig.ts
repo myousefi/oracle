@@ -96,7 +96,7 @@ export async function buildBrowserConfig(options: BrowserFlagOptions): Promise<B
   const baseModel = options.model.toLowerCase();
   const isChatGptModel = baseModel.startsWith('gpt-') && !baseModel.includes('codex');
   const shouldUseOverride = !isChatGptModel && normalizedOverride.length > 0 && normalizedOverride !== baseModel;
-  const modelStrategy =
+  let modelStrategy =
     normalizeBrowserModelStrategy(options.browserModelStrategy) ?? DEFAULT_MODEL_STRATEGY;
   const cookieNames = parseCookieNames(options.browserCookieNames ?? process.env.ORACLE_BROWSER_COOKIE_NAMES);
   let inline = await resolveInlineCookies({
@@ -117,11 +117,18 @@ export async function buildBrowserConfig(options: BrowserFlagOptions): Promise<B
   const rawUrl = options.chatgptUrl ?? options.browserUrl;
   const url = rawUrl ? normalizeChatgptUrl(rawUrl, CHATGPT_URL) : undefined;
 
+  const isGrokModel = baseModel.startsWith('grok');
+  if (isGrokModel) {
+    modelStrategy = 'ignore';
+  }
+
   const desiredModel = isChatGptModel
     ? mapModelToBrowserLabel(options.model)
     : shouldUseOverride
       ? desiredModelOverride
-      : mapModelToBrowserLabel(options.model);
+      : isGrokModel
+        ? desiredModelOverride ?? null
+        : options.model;
 
   if (modelStrategy === 'select' && url && isTemporaryChatUrl(url) && /\bpro\b/i.test(desiredModel ?? '')) {
     throw new Error(
@@ -209,6 +216,22 @@ export function resolveBrowserModelLabel(input: string | undefined, model: Model
     return mapModelToBrowserLabel(model);
   }
   return trimmed;
+}
+
+export function resolveGrokBrowserLabel(input: string | undefined): string | null {
+  const normalized = input?.toLowerCase?.().replace(/\s+/g, ' ').trim() ?? '';
+  if (!normalized || !normalized.includes('grok')) {
+    return null;
+  }
+  if (normalized.includes('expert')) return 'Expert';
+  if (normalized.includes('heavy')) return 'Heavy';
+  if (normalized.includes('thinking')) return 'Grok 4.1 Thinking';
+  if (normalized.includes('fast')) return 'Fast';
+  if (normalized.includes('auto')) return 'Auto';
+  if (normalized.includes('4.1') || normalized.includes('4-1') || normalized.includes('4_1')) {
+    return 'Fast';
+  }
+  return null;
 }
 
 function parseRemoteChromeTarget(raw: string): { host: string; port: number } {

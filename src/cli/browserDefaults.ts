@@ -35,6 +35,7 @@ export function applyBrowserDefaultsFromConfig(
   options: BrowserDefaultsOptions,
   config: UserConfig,
   getSource: SourceGetter,
+  model?: string,
 ): void {
   const browser = config.browser;
   if (!browser) return;
@@ -44,9 +45,15 @@ export function applyBrowserDefaultsFromConfig(
     return source === undefined || source === 'default';
   };
 
+  const normalizedModel = (model ?? '').toLowerCase();
+  const isGrok = normalizedModel.startsWith('grok');
   const configuredChatgptUrl = browser.chatgptUrl ?? browser.url;
   const cliChatgptSet = options.chatgptUrl !== undefined || options.browserUrl !== undefined;
-  if (isUnset('chatgptUrl') && !cliChatgptSet && configuredChatgptUrl !== undefined) {
+  if (isGrok) {
+    if (isUnset('browserUrl') && !cliChatgptSet && browser.grokUrl !== undefined) {
+      options.browserUrl = normalizeChatgptUrl(browser.grokUrl ?? '', CHATGPT_URL);
+    }
+  } else if (isUnset('chatgptUrl') && !cliChatgptSet && configuredChatgptUrl !== undefined) {
     options.chatgptUrl = normalizeChatgptUrl(configuredChatgptUrl ?? '', CHATGPT_URL);
   }
 

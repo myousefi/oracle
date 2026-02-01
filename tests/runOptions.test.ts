@@ -191,6 +191,17 @@ describe('resolveRunOptionsFromConfig', () => {
     ).toThrow(/Browser engine only supports GPT and Gemini/);
   });
 
+  it('allows browser engine for grok when ORACLE_BROWSER_GROK=1', () => {
+    const { resolvedEngine, engineCoercedToApi } = resolveRunOptionsFromConfig({
+      prompt: basePrompt,
+      model: 'grok',
+      engine: 'browser',
+      env: { ORACLE_BROWSER_GROK: '1' } as NodeJS.ProcessEnv,
+    });
+    expect(resolvedEngine).toBe('browser');
+    expect(engineCoercedToApi).toBeFalsy();
+  });
+
   it('forces api engine for grok when auto-selected browser and applies XAI base url', () => {
     // biome-ignore lint/style/useNamingConvention: env var is uppercase by convention
     const env: NodeJS.ProcessEnv = { XAI_BASE_URL: 'https://api.example/v1' } as NodeJS.ProcessEnv;
