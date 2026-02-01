@@ -191,6 +191,7 @@ interface BrowserLoginCliOptions {
 }
 
 const DEFAULT_GROK_LOGIN_URL = 'https://grok.com/';
+const DEFAULT_GEMINI_LOGIN_URL = 'https://gemini.google.com/app';
 
 const VERSION = getCliVersion();
 const CLI_ENTRYPOINT = fileURLToPath(import.meta.url);
@@ -776,7 +777,8 @@ function resolveBrowserLoginUrl(
   model: ModelName,
 ): string {
   const isGrok = model.startsWith('grok');
-  const fallback = isGrok ? DEFAULT_GROK_LOGIN_URL : CHATGPT_URL;
+  const isGemini = model.startsWith('gemini');
+  const fallback = isGrok ? DEFAULT_GROK_LOGIN_URL : isGemini ? DEFAULT_GEMINI_LOGIN_URL : CHATGPT_URL;
   const explicitUrl = options.url?.trim();
   if (explicitUrl) {
     return normalizeChatgptUrl(explicitUrl, fallback);
@@ -784,6 +786,9 @@ function resolveBrowserLoginUrl(
   if (isGrok) {
     const grokUrl = userConfig.browser?.grokUrl ?? process.env.ORACLE_GROK_URL ?? fallback;
     return normalizeChatgptUrl(grokUrl, fallback);
+  }
+  if (isGemini) {
+    return normalizeChatgptUrl(fallback, fallback);
   }
   const chatgptUrl = userConfig.browser?.chatgptUrl ?? userConfig.browser?.url ?? fallback;
   return normalizeChatgptUrl(chatgptUrl, fallback);
@@ -823,7 +828,11 @@ async function runBrowserLoginCommand(
     logger,
   });
 
-  const targetLabel = resolvedModel.startsWith('grok') ? 'Grok' : 'ChatGPT';
+  const targetLabel = resolvedModel.startsWith('grok')
+    ? 'Grok'
+    : resolvedModel.startsWith('gemini')
+      ? 'Gemini'
+      : 'ChatGPT';
   const reusedLabel = result.reused ? ' (reused)' : '';
   console.log(`${commandName} ready: ${targetLabel} profile${reusedLabel}.`);
   console.log(chalk.dim(`Profile: ${result.profileDir}`));
