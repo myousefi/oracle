@@ -201,9 +201,6 @@ export function registerConsultTool(server: McpServer): void {
         env: process.env,
       });
       const cwd = process.cwd();
-      const grokBrowserEnabled = ['1', 'true', 'yes', 'on'].includes(
-        (process.env.ORACLE_BROWSER_GROK ?? '').trim().toLowerCase(),
-      );
       const isGrokModel = runOptions.model.startsWith('grok');
 
       const resolvedRemote = resolveRemoteServiceConfig({ userConfig, env: process.env });
@@ -236,7 +233,7 @@ export function registerConsultTool(server: McpServer): void {
         browserDeps = {
           executeBrowser: createRemoteBrowserExecutor({ host: resolvedRemote.host, token: resolvedRemote.token }),
         };
-      } else if (resolvedEngine === 'browser' && isGrokModel && grokBrowserEnabled) {
+      } else if (resolvedEngine === 'browser' && isGrokModel) {
         browserDeps = {
           executeBrowser: createGrokWebExecutor({}),
         };

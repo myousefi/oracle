@@ -893,11 +893,6 @@ function resolveHeartbeatIntervalMs(seconds: number | undefined): number | undef
   return Math.round(seconds * 1000);
 }
 
-function isTruthy(value: string | undefined): boolean {
-  if (!value) return false;
-  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
-}
-
 function buildRunOptionsFromMetadata(metadata: SessionMetadata): RunOracleOptions {
   const stored = metadata.options ?? {};
   return {
@@ -1152,10 +1147,9 @@ async function runRootCommand(options: CliOptions): Promise<void> {
   const isGemini = primaryModelCandidate.startsWith('gemini');
   const isCodex = primaryModelCandidate.startsWith('gpt-5.1-codex');
   const isClaude = primaryModelCandidate.startsWith('claude');
-  const grokBrowserEnabled = isTruthy(process.env.ORACLE_BROWSER_GROK);
   const userForcedBrowser = options.browser || options.engine === 'browser';
   const isBrowserCompatible = (model: string) =>
-    model.startsWith('gpt-') || model.startsWith('gemini') || (grokBrowserEnabled && model.startsWith('grok'));
+    model.startsWith('gpt-') || model.startsWith('gemini') || model.startsWith('grok');
   const hasNonBrowserCompatibleTarget =
     (engine === 'browser' || userForcedBrowser) &&
     (normalizedMultiModels.length > 0
@@ -1163,8 +1157,8 @@ async function runRootCommand(options: CliOptions): Promise<void> {
       : !isBrowserCompatible(resolvedModelCandidate));
   if (hasNonBrowserCompatibleTarget) {
     throw new Error(
-      'Browser engine only supports GPT and Gemini models unless ORACLE_BROWSER_GROK=1 is set. ' +
-        'Re-run with --engine api for Grok, Claude, or other models.',
+      'Browser engine only supports GPT, Gemini, and Grok models. ' +
+        'Re-run with --engine api for Claude or other models.',
     );
   }
   if (isClaude && engine === 'browser') {
@@ -1380,7 +1374,7 @@ async function runRootCommand(options: CliOptions): Promise<void> {
   let browserExecutor: 'chatgpt' | 'remote' | 'grok' | 'gemini' | undefined;
   let remoteHostForSession: string | undefined;
   let geminiWeb: GeminiWebOptions | undefined;
-  if (browserConfig && remoteHost && resolvedModel.startsWith('grok') && grokBrowserEnabled) {
+  if (browserConfig && remoteHost && resolvedModel.startsWith('grok')) {
     throw new Error(
       '--remote-host does not support Grok browser automation yet. Run locally or use --engine api for Grok.',
     );
@@ -1392,7 +1386,7 @@ async function runRootCommand(options: CliOptions): Promise<void> {
       executeBrowser: createRemoteBrowserExecutor({ host: remoteHost, token: remoteToken }),
     };
     console.log(chalk.dim(`Routing browser automation to remote host ${remoteHost}`));
-  } else if (browserConfig && resolvedModel.startsWith('grok') && grokBrowserEnabled) {
+  } else if (browserConfig && resolvedModel.startsWith('grok')) {
     browserExecutor = 'grok';
     browserDeps = {
       executeBrowser: createGrokWebExecutor({}),

@@ -49,7 +49,6 @@ export function resolveRunOptionsFromConfig({
   const isCodex = resolvedModel.startsWith('gpt-5.1-codex');
   const isClaude = resolvedModel.startsWith('claude');
   const isGrok = resolvedModel.startsWith('grok');
-  const grokBrowserEnabled = isTruthy(env.ORACLE_BROWSER_GROK);
 
   const engineWasBrowser = resolvedEngine === 'browser';
   const allModels: ModelName[] =
@@ -57,19 +56,19 @@ export function resolveRunOptionsFromConfig({
       ? Array.from(new Set(normalizedRequestedModels.map((entry) => resolveApiModel(entry))))
       : [resolvedModel];
   const isBrowserCompatible = (m: string) =>
-    m.startsWith('gpt-') || m.startsWith('gemini') || (grokBrowserEnabled && m.startsWith('grok'));
+    m.startsWith('gpt-') || m.startsWith('gemini') || m.startsWith('grok');
   const hasNonBrowserCompatibleTarget = (browserRequested || browserConfigured) && allModels.some((m) => !isBrowserCompatible(m));
   if (hasNonBrowserCompatibleTarget) {
     throw new PromptValidationError(
-      'Browser engine only supports GPT and Gemini models unless ORACLE_BROWSER_GROK=1 is set. ' +
-        'Re-run with --engine api for Grok, Claude, or other models.',
+      'Browser engine only supports GPT, Gemini, and Grok models. ' +
+        'Re-run with --engine api for Claude or other models.',
       { engine: 'browser', models: allModels },
     );
   }
 
-  const engineCoercedToApi = engineWasBrowser && (isCodex || isClaude || (isGrok && !grokBrowserEnabled));
+  const engineCoercedToApi = engineWasBrowser && (isCodex || isClaude);
   const fixedEngine: EngineMode =
-    isCodex || isClaude || (isGrok && !grokBrowserEnabled) || normalizedRequestedModels.length > 0
+    isCodex || isClaude || normalizedRequestedModels.length > 0
       ? 'api'
       : resolvedEngine;
 
@@ -128,11 +127,6 @@ function resolveEngineWithConfig({
   }
   if (configEngine) return configEngine;
   return resolveEngine({ engine: undefined, env });
-}
-
-function isTruthy(value: string | undefined): boolean {
-  if (!value) return false;
-  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
 }
 
 function resolveEffectiveModelId(model: ModelName): string {
