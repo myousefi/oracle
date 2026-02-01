@@ -245,7 +245,6 @@ export function registerConsultTool(server: McpServer): void {
       let browserConfig: BrowserSessionConfig | undefined;
       if (resolvedEngine === 'browser') {
         const envProfileDir = (process.env.ORACLE_BROWSER_PROFILE_DIR ?? '').trim();
-        const hasProfileDir = envProfileDir.length > 0;
         const explicitLabel = browserModelLabel?.trim();
         const modelLabelFallback = model?.trim();
         const isChatGptModel = runOptions.model.startsWith('gpt-') && !runOptions.model.includes('codex');
@@ -256,16 +255,16 @@ export function registerConsultTool(server: McpServer): void {
             ? explicitLabel || grokDerivedLabel
             : explicitLabel || modelLabelFallback || runOptions.model;
         const configuredUrl = userConfig.browser?.chatgptUrl ?? userConfig.browser?.url ?? undefined;
-        // Default to manual-login when a persistent profile dir is provided (common for Codex/Claude).
-        const manualLogin = hasProfileDir;
+        const manualLogin = true;
+        const keepBrowser = browserKeepBrowser === undefined ? undefined : browserKeepBrowser;
         browserConfig = {
           url: configuredUrl ?? CHATGPT_URL,
           cookieSync: !manualLogin,
           headless: false,
           hideWindow: false,
-          keepBrowser: browserKeepBrowser ?? false,
+          keepBrowser,
           manualLogin,
-          manualLoginProfileDir: manualLogin ? envProfileDir : null,
+          manualLoginProfileDir: envProfileDir.length > 0 ? envProfileDir : null,
           thinkingTime: browserThinkingTime,
           desiredModel: desiredModelLabel ?? null,
         };
