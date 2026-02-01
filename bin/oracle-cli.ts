@@ -22,6 +22,9 @@ import type { ModelName, PreviewMode, RunOracleOptions } from '../src/oracle.js'
 import { CHATGPT_URL, normalizeChatgptUrl } from '../src/browserMode.js';
 import { createRemoteBrowserExecutor } from '../src/remote/client.js';
 import { createGeminiWebExecutor } from '../src/gemini-web/index.js';
+import { createGrokWebExecutor } from '../src/grok-web/index.js';
+import type { GeminiWebOptions } from '../src/gemini-web/index.js';
+import { ensureBrowserLoginProfile } from '../src/browser/index.js';
 import { applyHelpStyling } from '../src/cli/help.js';
 import {
   collectPaths,
@@ -49,6 +52,7 @@ import { buildBrowserConfig, resolveBrowserModelLabel } from '../src/cli/browser
 import { performSessionRun } from '../src/cli/sessionRunner.js';
 import type { BrowserSessionRunnerDeps } from '../src/browser/sessionRunner.js';
 import { isMediaFile } from '../src/browser/prompt.js';
+import type { BrowserLogger } from '../src/browser/types.js';
 import { attachSession, showStatus, formatCompletionSummary } from '../src/cli/sessionDisplay.js';
 import type { ShowStatusOptions } from '../src/cli/sessionDisplay.js';
 import { formatCompactNumber } from '../src/cli/format.js';
@@ -71,6 +75,7 @@ import {
 } from '../src/cli/notifier.js';
 import { loadUserConfig, type UserConfig } from '../src/config.js';
 import { applyBrowserDefaultsFromConfig } from '../src/cli/browserDefaults.js';
+import { resolveGrokBrowserLabel } from '../src/cli/browserConfig.js';
 import { shouldBlockDuplicatePrompt } from '../src/cli/duplicatePromptGuard.js';
 import { resolveRemoteServiceConfig } from '../src/remote/remoteServiceConfig.js';
 
@@ -176,6 +181,15 @@ interface RestartCommandOptions {
   remoteHost?: string;
   remoteToken?: string;
 }
+
+interface BrowserLoginCliOptions {
+  url?: string;
+  model?: string;
+  profileDir?: string;
+  debugPort?: number;
+}
+
+const DEFAULT_GROK_LOGIN_URL = 'https://grok.com/';
 
 const VERSION = getCliVersion();
 const CLI_ENTRYPOINT = fileURLToPath(import.meta.url);
@@ -561,7 +575,7 @@ program
   .option('--port <number>', 'Port to listen on (default random).', parseIntOption)
   .option('--token <value>', 'Access token clients must provide (random if omitted).')
   .option('--manual-login', 'Use a dedicated Chrome profile for manual login (recommended when cookie sync is unavailable).', false)
-  .option('--manual-login-profile-dir <path>', 'Chrome profile directory for manual login (default ~/.oracle/browser-profile).')
+  .option('--manual-login-profile-dir <path>', 'Chrome profile directory for manual login (default ~/.oracle/chrome).')
   .action(async (commandOptions) => {
     const { serveRemote } = await import('../src/remote/server.js');
     await serveRemote({
@@ -642,6 +656,29 @@ program
     await launchTui({ version: VERSION, printIntro: false });
   });
 
+const browserLoginOptions = (command: Command): Command =>
+  command
+    .option('--url <url>', 'URL to open for login (defaults to ChatGPT or Grok based on --model).')
+    .option('--model <name>', 'Model hint for choosing login target (e.g., grok).')
+    .option('--profile-dir <path>', 'Override the Oracle browser profile directory (default ~/.oracle/chrome).')
+    .option('--debug-port <port>', 'Chrome DevTools port (default from config or 9222).', parseIntOption);
+
+browserLoginOptions(
+  program
+    .command('login')
+    .description('Open the Oracle browser profile for manual login.')
+).action(async (commandOptions) => {
+  await runBrowserLoginCommand(commandOptions, 'login');
+});
+
+browserLoginOptions(
+  program
+    .command('run-browser')
+    .description('Launch or reuse the Oracle browser profile and keep Chrome open.')
+).action(async (commandOptions) => {
+  await runBrowserLoginCommand(commandOptions, 'run-browser');
+});
+
 const sessionCommand = program
   .command('session [id]')
   .description('Attach to a stored session or list recent sessions when no ID is provided.')
@@ -692,7 +729,7 @@ const statusCommand = program
       process.exitCode = 1;
       return;
     }
-    if (sessionId) {
+  if (sessionId) {
       const autoRender = !command.getOptionValueSource?.('render') && !command.getOptionValueSource?.('renderMarkdown')
         ? process.stdout.isTTY
         : false;
@@ -720,6 +757,75 @@ program
     const restartOptions = cmd.opts<RestartCommandOptions>();
     await restartSession(sessionId, restartOptions);
   });
+
+function resolveBrowserLoginModel(options: BrowserLoginCliOptions, userConfig: UserConfig): ModelName {
+  const modelInput =
+    normalizeModelOption(options.model) ||
+    normalizeModelOption(userConfig.model) ||
+    DEFAULT_MODEL;
+  return inferModelFromLabel(modelInput);
+}
+
+function resolveBrowserLoginUrl(
+  options: BrowserLoginCliOptions,
+  userConfig: UserConfig,
+  model: ModelName,
+): string {
+  const isGrok = model.startsWith('grok');
+  const fallback = isGrok ? DEFAULT_GROK_LOGIN_URL : CHATGPT_URL;
+  const explicitUrl = options.url?.trim();
+  if (explicitUrl) {
+    return normalizeChatgptUrl(explicitUrl, fallback);
+  }
+  if (isGrok) {
+    const grokUrl = userConfig.browser?.grokUrl ?? process.env.ORACLE_GROK_URL ?? fallback;
+    return normalizeChatgptUrl(grokUrl, fallback);
+  }
+  const chatgptUrl = userConfig.browser?.chatgptUrl ?? userConfig.browser?.url ?? fallback;
+  return normalizeChatgptUrl(chatgptUrl, fallback);
+}
+
+function resolveBrowserLoginProfileDir(options: BrowserLoginCliOptions, userConfig: UserConfig): string | undefined {
+  const raw =
+    options.profileDir ??
+    userConfig.browser?.manualLoginProfileDir ??
+    process.env.ORACLE_BROWSER_PROFILE_DIR;
+  return raw ?? undefined;
+}
+
+function resolveBrowserLoginDebugPort(options: BrowserLoginCliOptions, userConfig: UserConfig): number | undefined {
+  if (typeof options.debugPort === 'number') {
+    return options.debugPort;
+  }
+  const configPort = userConfig.browser?.debugPort;
+  return typeof configPort === 'number' ? configPort : undefined;
+}
+
+async function runBrowserLoginCommand(
+  commandOptions: BrowserLoginCliOptions,
+  commandName: 'login' | 'run-browser',
+): Promise<void> {
+  const { config: userConfig } = await loadUserConfig();
+  const resolvedModel = resolveBrowserLoginModel(commandOptions, userConfig);
+  const url = resolveBrowserLoginUrl(commandOptions, userConfig, resolvedModel);
+  const profileDir = resolveBrowserLoginProfileDir(commandOptions, userConfig);
+  const debugPort = resolveBrowserLoginDebugPort(commandOptions, userConfig);
+  const logger = ((message: string) => console.log(chalk.dim(message))) as BrowserLogger;
+
+  const result = await ensureBrowserLoginProfile({
+    url,
+    profileDir,
+    debugPort,
+    logger,
+  });
+
+  const targetLabel = resolvedModel.startsWith('grok') ? 'Grok' : 'ChatGPT';
+  const reusedLabel = result.reused ? ' (reused)' : '';
+  console.log(`${commandName} ready: ${targetLabel} profile${reusedLabel}.`);
+  console.log(chalk.dim(`Profile: ${result.profileDir}`));
+  console.log(chalk.dim(`DevTools: ${result.port}`));
+  console.log(chalk.dim(`URL: ${url}`));
+}
 
 function buildRunOptions(options: ResolvedCliOptions, overrides: Partial<RunOracleOptions> = {}): RunOracleOptions {
   if (!options.prompt) {
@@ -787,6 +893,11 @@ function resolveHeartbeatIntervalMs(seconds: number | undefined): number | undef
   return Math.round(seconds * 1000);
 }
 
+function isTruthy(value: string | undefined): boolean {
+  if (!value) return false;
+  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
+}
+
 function buildRunOptionsFromMetadata(metadata: SessionMetadata): RunOracleOptions {
   const stored = metadata.options ?? {};
   return {
@@ -829,6 +940,60 @@ function getSessionMode(metadata: SessionMetadata): SessionMode {
 
 function getBrowserConfigFromMetadata(metadata: SessionMetadata): BrowserSessionConfig | undefined {
   return metadata.options?.browserConfig ?? metadata.browser?.config;
+}
+
+function resolveBrowserDepsFromMetadata(
+  metadata: SessionMetadata,
+  runOptions: RunOracleOptions,
+  userConfig: UserConfig,
+  log?: (message?: string) => void,
+): BrowserSessionRunnerDeps | undefined {
+  if (getSessionMode(metadata) !== 'browser') return undefined;
+
+  const stored = metadata.options ?? {};
+  const executor = stored.browserExecutor;
+  const isGrok = runOptions.model?.startsWith('grok');
+  const isGemini = runOptions.model?.startsWith('gemini');
+
+  const fallback = (): BrowserSessionRunnerDeps | undefined => {
+    if (isGrok) {
+      return { executeBrowser: createGrokWebExecutor({}) };
+    }
+    if (isGemini) {
+      return { executeBrowser: createGeminiWebExecutor(stored.geminiWeb ?? {}) };
+    }
+    return undefined;
+  };
+
+  if (!executor) return fallback();
+
+  if (executor === 'remote') {
+    const remoteConfig = resolveRemoteServiceConfig({
+      cliHost: stored.remoteHost ?? undefined,
+      userConfig,
+      env: process.env,
+    });
+    if (!remoteConfig.host) {
+      throw new Error('Remote browser host is missing for this session. Set ORACLE_REMOTE_HOST and retry.');
+    }
+    if (!remoteConfig.token) {
+      throw new Error(
+        'Remote browser token is missing for this session. Set ORACLE_REMOTE_TOKEN or configure browser.remoteToken.',
+      );
+    }
+    log?.(`Routing browser automation to remote host ${remoteConfig.host}`);
+    return { executeBrowser: createRemoteBrowserExecutor({ host: remoteConfig.host, token: remoteConfig.token }) };
+  }
+
+  if (executor === 'grok') {
+    return { executeBrowser: createGrokWebExecutor({}) };
+  }
+
+  if (executor === 'gemini') {
+    return { executeBrowser: createGeminiWebExecutor(stored.geminiWeb ?? {}) };
+  }
+
+  return undefined;
 }
 
 async function runRootCommand(options: CliOptions): Promise<void> {
@@ -987,8 +1152,10 @@ async function runRootCommand(options: CliOptions): Promise<void> {
   const isGemini = primaryModelCandidate.startsWith('gemini');
   const isCodex = primaryModelCandidate.startsWith('gpt-5.1-codex');
   const isClaude = primaryModelCandidate.startsWith('claude');
+  const grokBrowserEnabled = isTruthy(process.env.ORACLE_BROWSER_GROK);
   const userForcedBrowser = options.browser || options.engine === 'browser';
-  const isBrowserCompatible = (model: string) => model.startsWith('gpt-') || model.startsWith('gemini');
+  const isBrowserCompatible = (model: string) =>
+    model.startsWith('gpt-') || model.startsWith('gemini') || (grokBrowserEnabled && model.startsWith('grok'));
   const hasNonBrowserCompatibleTarget =
     (engine === 'browser' || userForcedBrowser) &&
     (normalizedMultiModels.length > 0
@@ -996,7 +1163,8 @@ async function runRootCommand(options: CliOptions): Promise<void> {
       : !isBrowserCompatible(resolvedModelCandidate));
   if (hasNonBrowserCompatibleTarget) {
     throw new Error(
-      'Browser engine only supports GPT and Gemini models. Re-run with --engine api for Grok, Claude, or other models.'
+      'Browser engine only supports GPT and Gemini models unless ORACLE_BROWSER_GROK=1 is set. ' +
+        'Re-run with --engine api for Grok, Claude, or other models.',
     );
   }
   if (isClaude && engine === 'browser') {
@@ -1181,7 +1349,7 @@ async function runRootCommand(options: CliOptions): Promise<void> {
   }
 
   const getSource = (key: keyof CliOptions) => program.getOptionValueSource?.(key as string) ?? undefined;
-  applyBrowserDefaultsFromConfig(options, userConfig, getSource);
+  applyBrowserDefaultsFromConfig(options, userConfig, getSource, resolvedModel);
 
   const notifications = resolveNotificationSettings({
     cliNotify: options.notify,
@@ -1191,8 +1359,14 @@ async function runRootCommand(options: CliOptions): Promise<void> {
   });
 
   const sessionMode: SessionMode = engine === 'browser' ? 'browser' : 'api';
-  const browserModelLabelOverride =
-    sessionMode === 'browser' ? resolveBrowserModelLabel(cliModelArg, resolvedModel) : undefined;
+  let browserModelLabelOverride: string | undefined;
+  if (sessionMode === 'browser') {
+    if (resolvedModel.startsWith('gpt-') && !resolvedModel.includes('codex')) {
+      browserModelLabelOverride = resolveBrowserModelLabel(cliModelArg, resolvedModel);
+    } else if (resolvedModel.startsWith('grok')) {
+      browserModelLabelOverride = resolveGrokBrowserLabel(cliModelArg) ?? undefined;
+    }
+  }
   const browserConfig =
     sessionMode === 'browser'
       ? await buildBrowserConfig({
@@ -1203,28 +1377,47 @@ async function runRootCommand(options: CliOptions): Promise<void> {
       : undefined;
 
   let browserDeps: BrowserSessionRunnerDeps | undefined;
+  let browserExecutor: 'chatgpt' | 'remote' | 'grok' | 'gemini' | undefined;
+  let remoteHostForSession: string | undefined;
+  let geminiWeb: GeminiWebOptions | undefined;
+  if (browserConfig && remoteHost && resolvedModel.startsWith('grok') && grokBrowserEnabled) {
+    throw new Error(
+      '--remote-host does not support Grok browser automation yet. Run locally or use --engine api for Grok.',
+    );
+  }
   if (browserConfig && remoteHost) {
+    browserExecutor = 'remote';
+    remoteHostForSession = remoteHost;
     browserDeps = {
       executeBrowser: createRemoteBrowserExecutor({ host: remoteHost, token: remoteToken }),
     };
     console.log(chalk.dim(`Routing browser automation to remote host ${remoteHost}`));
-  } else if (browserConfig && resolvedModel.startsWith('gemini')) {
+  } else if (browserConfig && resolvedModel.startsWith('grok') && grokBrowserEnabled) {
+    browserExecutor = 'grok';
     browserDeps = {
-      executeBrowser: createGeminiWebExecutor({
-        youtube: options.youtube,
-        generateImage: options.generateImage,
-        editImage: options.editImage,
-        outputPath: options.output,
-        aspectRatio: options.aspect,
-        showThoughts: options.geminiShowThoughts,
-      }),
+      executeBrowser: createGrokWebExecutor({}),
+    };
+    console.log(chalk.dim('Using Grok web executor for browser automation'));
+  } else if (browserConfig && resolvedModel.startsWith('gemini')) {
+    browserExecutor = 'gemini';
+    geminiWeb = {
+      youtube: options.youtube,
+      generateImage: options.generateImage,
+      editImage: options.editImage,
+      outputPath: options.output,
+      aspectRatio: options.aspect,
+      showThoughts: options.geminiShowThoughts,
+    };
+    browserDeps = {
+      executeBrowser: createGeminiWebExecutor(geminiWeb),
     };
     console.log(chalk.dim('Using Gemini web client for browser automation'));
     if (browserConfig.modelStrategy && browserConfig.modelStrategy !== 'select') {
       console.log(chalk.dim('Browser model strategy is ignored for Gemini web runs.'));
     }
+  } else if (browserConfig) {
+    browserExecutor = 'chatgpt';
   }
-  const remoteExecutionActive = Boolean(browserDeps);
 
   if (options.dryRun) {
     const baseRunOptions = buildRunOptions(resolvedOptions, {
@@ -1270,6 +1463,9 @@ async function runRootCommand(options: CliOptions): Promise<void> {
       outputPath: options.output,
       aspectRatio: options.aspect,
       geminiShowThoughts: options.geminiShowThoughts,
+      browserExecutor,
+      remoteHost: remoteHostForSession,
+      geminiWeb,
     },
     process.cwd(),
     notifications,
@@ -1280,17 +1476,22 @@ async function runRootCommand(options: CliOptions): Promise<void> {
     effectiveModelId,
   };
   const disableDetachEnv = process.env.ORACLE_NO_DETACH === '1';
-  const detachAllowed = remoteExecutionActive
-    ? false
-    : shouldDetachSession({
-        engine,
-        model: resolvedModel,
-        waitPreference,
-        disableDetachEnv,
-      });
+  const detachEnvOverrides: NodeJS.ProcessEnv | undefined =
+    browserExecutor === 'remote'
+      ? {
+          ...(remoteHostForSession ? { ORACLE_REMOTE_HOST: remoteHostForSession } : {}),
+          ...(remoteToken ? { ORACLE_REMOTE_TOKEN: remoteToken } : {}),
+        }
+      : undefined;
+  const detachAllowed = shouldDetachSession({
+    engine,
+    model: resolvedModel,
+    waitPreference,
+    disableDetachEnv,
+  });
   const detached = !detachAllowed
     ? false
-    : await launchDetachedSession(sessionMeta.id).catch((error) => {
+    : await launchDetachedSession(sessionMeta.id, detachEnvOverrides).catch((error) => {
       const message = error instanceof Error ? error.message : String(error);
       console.log(chalk.yellow(`Unable to detach session runner (${message}). Running inline...`));
       return false;
@@ -1391,14 +1592,22 @@ async function runInteractiveSession(
   }
 }
 
-async function launchDetachedSession(sessionId: string): Promise<boolean> {
+async function launchDetachedSession(sessionId: string, envOverrides?: NodeJS.ProcessEnv): Promise<boolean> {
   return new Promise((resolve, reject) => {
     try {
       const args = ['--', CLI_ENTRYPOINT, '--exec-session', sessionId];
+      const env = { ...process.env };
+      if (envOverrides) {
+        for (const [key, value] of Object.entries(envOverrides)) {
+          if (typeof value === 'string') {
+            env[key] = value;
+          }
+        }
+      }
       const child = spawn(process.execPath, args, {
         detached: true,
         stdio: 'ignore',
-        env: process.env,
+        env,
       });
       child.once('error', reject);
       child.once('spawn', () => {
@@ -1587,6 +1796,7 @@ async function executeSession(sessionId: string) {
   const { logLine, writeChunk, stream } = sessionStore.createLogWriter(sessionId);
   const userConfig = (await loadUserConfig()).config;
   const notifications = deriveNotificationSettingsFromMetadata(metadata, process.env, userConfig.notify);
+  const browserDeps = resolveBrowserDepsFromMetadata(metadata, runOptions, userConfig, logLine);
   try {
     await performSessionRun({
       sessionMeta: metadata,
@@ -1598,6 +1808,7 @@ async function executeSession(sessionId: string) {
       write: writeChunk,
       version: VERSION,
       notifications,
+      browserDeps,
     });
   } catch {
     // Errors are already logged to the session log; keep quiet to mirror stored-session behavior.
