@@ -1,11 +1,11 @@
 ---
 name: oracle
-description: Use the oracle CLI to bundle a prompt plus the right files and get a second-model review (API or browser) for debugging, refactors, design checks, or cross-validation.
+description: Use the oracle CLI to bundle a prompt plus the right files and get a second-model review (browser automation) for debugging, refactors, design checks, or cross-validation.
 ---
 
 # Oracle (CLI) — best use
 
-Oracle bundles your prompt + selected files into one “one-shot” request so another model can answer with real repo context (API or browser automation). Treat outputs as advisory: verify against the codebase + tests.
+Oracle bundles your prompt + selected files into one “one-shot” request so another model can answer with real repo context via browser automation. Treat outputs as advisory: verify against the codebase + tests.
 
 ## Main use case (browser, GPT‑5.2 Pro)
 
@@ -20,7 +20,7 @@ Recommended defaults:
 
 1. Pick a tight file set (fewest files that still contain the truth).
 2. Preview what you’re about to send (`--dry-run` + `--files-report` when needed).
-3. Run in browser mode for the usual GPT‑5.2 Pro ChatGPT workflow; use API only when you explicitly want it.
+3. Run in browser mode for the usual GPT‑5.2 Pro ChatGPT workflow.
 4. If the run detaches/timeouts: reattach to the stored session (don’t re-run).
 
 ## Commands (preferred)
@@ -67,11 +67,9 @@ Recommended defaults:
 - Use `--files-report` (and/or `--dry-run json`) to spot the token hogs before spending.
 - If you need hidden/advanced knobs: `oracle --help --verbose`.
 
-## Engines (API vs browser)
+## Browser engine
 
-- Auto-pick: uses `api` when `OPENAI_API_KEY` is set, otherwise `browser`.
-- Browser engine supports GPT (ChatGPT), Grok (grok.com), and Gemini (gemini.google.com). Use `--engine api` for Claude/Codex or multi-model runs.
-- **API runs require explicit user consent** before starting because they incur usage costs.
+- Browser engine supports GPT (ChatGPT), Grok (grok.com), and Gemini (gemini.google.com).
 - Browser attachments:
   - `--browser-attachments auto|never|always` (auto pastes inline up to ~60k chars then uploads).
 - Remote browser host (signed-in machine runs automation):
@@ -93,7 +91,7 @@ Oracle starts with **zero** project knowledge. Assume the model cannot infer you
 - Project briefing (stack + build/test commands + platform constraints).
 - “Where things live” (key directories, entrypoints, config files, dependency boundaries).
 - Exact question + what you tried + the error text (verbatim).
-- Constraints (“don’t change X”, “must keep public API”, “perf budget”, etc).
+- Constraints (“don’t change X”, “must keep public surface area”, “perf budget”, etc).
 - Desired output (“return patch plan + tests”, “list risky assumptions”, “give 3 options with tradeoffs”).
 
 ### “Exhaustive prompt” pattern (for later restoration)
