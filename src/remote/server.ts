@@ -21,6 +21,7 @@ import {
   writeDevToolsActivePort,
 } from '../browser/profileState.js';
 import { normalizeChatgptUrl } from '../browser/utils.js';
+import { DEFAULT_ORACLE_BROWSER_PROFILE_DIR } from '../browser/profileDefaults.js';
 
 export interface RemoteServerOptions {
   host?: string;
@@ -256,7 +257,7 @@ export async function createRemoteServer(
 }
 
 export async function serveRemote(options: RemoteServerOptions = {}): Promise<void> {
-  const manualProfileDir = options.manualLoginProfileDir ?? path.join(os.homedir(), '.oracle', 'browser-profile');
+  const manualProfileDir = options.manualLoginProfileDir ?? DEFAULT_ORACLE_BROWSER_PROFILE_DIR;
   const preferManualLogin = options.manualLoginDefault || process.platform === 'win32' || isWsl();
   let cookies: CookieParam[] | null = null;
   let opened = false;

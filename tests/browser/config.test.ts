@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { resolveBrowserConfig } from '../../src/browser/config.js';
 import { CHATGPT_URL } from '../../src/browser/constants.js';
+import { DEFAULT_ORACLE_BROWSER_PROFILE_DIR } from '../../src/browser/profileDefaults.js';
 
 describe('resolveBrowserConfig', () => {
   test('returns defaults when config missing', () => {
@@ -9,7 +10,9 @@ describe('resolveBrowserConfig', () => {
     const isWindows = process.platform === 'win32';
     expect(resolved.cookieSync).toBe(!isWindows);
     expect(resolved.headless).toBe(false);
-    expect(resolved.manualLogin).toBe(isWindows);
+    expect(resolved.manualLogin).toBe(true);
+    expect(resolved.keepBrowser).toBe(true);
+    expect(resolved.manualLoginProfileDir).toBe(DEFAULT_ORACLE_BROWSER_PROFILE_DIR);
     expect(resolved.profileLockTimeoutMs).toBe(300_000);
   });
 

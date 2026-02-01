@@ -2,8 +2,7 @@ import { CHATGPT_URL, DEFAULT_MODEL_STRATEGY, DEFAULT_MODEL_TARGET } from './con
 import { normalizeBrowserModelStrategy } from './modelStrategy.js';
 import type { BrowserAutomationConfig, ResolvedBrowserConfig } from './types.js';
 import { isTemporaryChatUrl, normalizeChatgptUrl } from './utils.js';
-import os from 'node:os';
-import path from 'node:path';
+import { DEFAULT_ORACLE_BROWSER_DEBUG_PORT, DEFAULT_ORACLE_BROWSER_PROFILE_DIR } from './profileDefaults.js';
 
 export const DEFAULT_BROWSER_CONFIG: ResolvedBrowserConfig = {
   chromeProfile: null,
@@ -12,7 +11,7 @@ export const DEFAULT_BROWSER_CONFIG: ResolvedBrowserConfig = {
   url: CHATGPT_URL,
   chatgptUrl: CHATGPT_URL,
   timeoutMs: 1_200_000,
-  debugPort: null,
+  debugPort: DEFAULT_ORACLE_BROWSER_DEBUG_PORT,
   inputTimeoutMs: 60_000,
   assistantRecheckDelayMs: 0,
   assistantRecheckTimeoutMs: 120_000,
@@ -34,7 +33,7 @@ export const DEFAULT_BROWSER_CONFIG: ResolvedBrowserConfig = {
   debug: false,
   allowCookieErrors: false,
   remoteChrome: null,
-  manualLogin: false,
+  manualLogin: true,
   manualLoginProfileDir: null,
   manualLoginCookieSync: false,
 };
@@ -68,12 +67,17 @@ export function resolveBrowserConfig(config: BrowserAutomationConfig | undefined
     );
   }
   const isWindows = process.platform === 'win32';
-  const manualLogin = config?.manualLogin ?? (isWindows ? true : DEFAULT_BROWSER_CONFIG.manualLogin);
+  const manualLogin =
+    config?.manualLogin ??
+    (isWindows ? true : DEFAULT_BROWSER_CONFIG.manualLogin);
   const cookieSyncDefault = isWindows ? false : DEFAULT_BROWSER_CONFIG.cookieSync;
   const resolvedProfileDir =
     config?.manualLoginProfileDir ??
     process.env.ORACLE_BROWSER_PROFILE_DIR ??
-    path.join(os.homedir(), '.oracle', 'browser-profile');
+    DEFAULT_ORACLE_BROWSER_PROFILE_DIR;
+  const keepBrowser =
+    config?.keepBrowser ??
+    (manualLogin ? true : DEFAULT_BROWSER_CONFIG.keepBrowser);
   return {
     ...DEFAULT_BROWSER_CONFIG,
     ...(config ?? {}),
@@ -95,7 +99,7 @@ export function resolveBrowserConfig(config: BrowserAutomationConfig | undefined
     inlineCookies: config?.inlineCookies ?? DEFAULT_BROWSER_CONFIG.inlineCookies,
     inlineCookiesSource: config?.inlineCookiesSource ?? DEFAULT_BROWSER_CONFIG.inlineCookiesSource,
     headless: config?.headless ?? DEFAULT_BROWSER_CONFIG.headless,
-    keepBrowser: config?.keepBrowser ?? DEFAULT_BROWSER_CONFIG.keepBrowser,
+    keepBrowser,
     hideWindow: config?.hideWindow ?? DEFAULT_BROWSER_CONFIG.hideWindow,
     desiredModel,
     modelStrategy,

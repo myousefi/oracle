@@ -42,6 +42,7 @@ import type { LaunchedChrome } from 'chrome-launcher';
 import { BrowserAutomationError } from '../oracle/errors.js';
 import { alignPromptEchoPair, buildPromptEchoMatcher } from './reattachHelpers.js';
 import type { ProfileRunLock } from './profileState.js';
+import { DEFAULT_ORACLE_BROWSER_PROFILE_DIR } from './profileDefaults.js';
 import {
   cleanupStaleProfileState,
   acquireProfileRunLock,
@@ -56,6 +57,7 @@ import {
 export type { BrowserAutomationConfig, BrowserRunOptions, BrowserRunResult } from './types.js';
 export { CHATGPT_URL, DEFAULT_MODEL_STRATEGY, DEFAULT_MODEL_TARGET } from './constants.js';
 export { parseDuration, delay, normalizeChatgptUrl, isTemporaryChatUrl } from './utils.js';
+export { ensureBrowserLoginProfile } from './login.js';
 
 export async function runBrowserMode(options: BrowserRunOptions): Promise<BrowserRunResult> {
   const promptText = options.prompt?.trim();
@@ -133,7 +135,7 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
   const manualLogin = Boolean(config.manualLogin);
   const manualProfileDir = config.manualLoginProfileDir
     ? path.resolve(config.manualLoginProfileDir)
-    : path.join(os.homedir(), '.oracle', 'browser-profile');
+    : DEFAULT_ORACLE_BROWSER_PROFILE_DIR;
   const userDataDir = manualLogin
     ? manualProfileDir
     : await mkdtemp(path.join(await resolveUserDataBaseDir(), 'oracle-browser-'));

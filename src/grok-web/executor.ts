@@ -4,6 +4,7 @@ import os from 'node:os';
 import type { BrowserRunOptions, BrowserRunResult, BrowserLogger, BrowserAttachment, ChromeClient } from '../browser/types.js';
 import { BrowserAutomationError } from '../oracle/errors.js';
 import { resolveBrowserConfig } from '../browser/config.js';
+import { DEFAULT_ORACLE_BROWSER_PROFILE_DIR } from '../browser/profileDefaults.js';
 import {
   launchChrome,
   registerTerminationHooks,
@@ -601,7 +602,7 @@ export function createGrokWebExecutor(
     const manualLogin = Boolean(config.manualLogin);
     const manualProfileDir = config.manualLoginProfileDir
       ? path.resolve(config.manualLoginProfileDir)
-      : path.join(os.homedir(), '.oracle', 'browser-profile');
+      : DEFAULT_ORACLE_BROWSER_PROFILE_DIR;
     const userDataDir = manualLogin
       ? manualProfileDir
       : await mkdtemp(path.join(await resolveUserDataBaseDir(), 'oracle-grok-'));

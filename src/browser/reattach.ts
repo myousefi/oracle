@@ -16,6 +16,7 @@ import { launchChrome, connectToChrome, hideChromeWindow } from './chromeLifecyc
 import { resolveBrowserConfig } from './config.js';
 import { syncCookies } from './cookies.js';
 import { CHATGPT_URL } from './constants.js';
+import { DEFAULT_ORACLE_BROWSER_PROFILE_DIR } from './profileDefaults.js';
 import { cleanupStaleProfileState } from './profileState.js';
 import {
   pickTarget,
@@ -160,7 +161,7 @@ async function resumeBrowserSessionViaNewChrome(
   const resolved = resolveBrowserConfig(config ?? {});
   const manualLogin = Boolean(resolved.manualLogin);
   const userDataDir = manualLogin
-    ? resolved.manualLoginProfileDir ?? path.join(os.homedir(), '.oracle', 'browser-profile')
+    ? resolved.manualLoginProfileDir ?? DEFAULT_ORACLE_BROWSER_PROFILE_DIR
     : await mkdtemp(path.join(os.tmpdir(), 'oracle-reattach-'));
   if (manualLogin) {
     await mkdir(userDataDir, { recursive: true });
