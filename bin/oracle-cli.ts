@@ -1602,7 +1602,10 @@ async function runInteractiveSession(
 async function launchDetachedSession(sessionId: string, envOverrides?: NodeJS.ProcessEnv): Promise<boolean> {
   return new Promise((resolve, reject) => {
     try {
-      const args = ['--', CLI_ENTRYPOINT, '--exec-session', sessionId];
+      // Use a runtime-agnostic argv shape so this works under Node and Bun.
+      // Node: `node <script> ...`
+      // Bun:  `bun <script> ...`
+      const args = [CLI_ENTRYPOINT, '--exec-session', sessionId];
       const env = { ...process.env };
       if (envOverrides) {
         for (const [key, value] of Object.entries(envOverrides)) {
