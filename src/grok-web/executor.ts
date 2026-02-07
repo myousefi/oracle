@@ -260,6 +260,7 @@ function resolveGrokModelLabel(input: string): string {
 
 async function selectGrokModel(
   Runtime: ChromeClient['Runtime'],
+  Input: ChromeClient['Input'],
   desiredModel: string | null | undefined,
   logger: BrowserLogger,
 ): Promise<void> {
@@ -267,17 +268,45 @@ async function selectGrokModel(
   if (!desiredRaw) return;
   const desired = resolveGrokModelLabel(desiredRaw);
 
-  const opened = await Runtime.evaluate({
-    expression: `(() => {
-      const trigger = document.querySelector(${JSON.stringify(GROK_MODEL_TRIGGER_SELECTOR)});
-      if (!(trigger instanceof HTMLElement)) return false;
-      trigger.click();
-      return true;
-    })()`,
-    returnByValue: true,
-  }).catch(() => null);
+  // Grok may ignore synthetic `.click()` (isTrusted checks). Prefer a CDP mouse click.
+  const opened = await (async () => {
+    const locate = await Runtime.evaluate({
+      expression: `(() => {
+        const trigger = document.querySelector(${JSON.stringify(GROK_MODEL_TRIGGER_SELECTOR)});
+        if (!(trigger instanceof HTMLElement)) return { ok: false };
+        trigger.scrollIntoView({ block: 'center', inline: 'center' });
+        const rect = trigger.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return { ok: false };
+        return { ok: true, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      })()`,
+      returnByValue: true,
+    }).catch(() => null);
+    const value = locate?.result?.value as { ok?: boolean; x?: number; y?: number } | undefined;
+    if (value?.ok && typeof value.x === 'number' && typeof value.y === 'number') {
+      const x = value.x;
+      const y = value.y;
+      try {
+        await Input.dispatchMouseEvent({ type: 'mouseMoved', x, y });
+        await Input.dispatchMouseEvent({ type: 'mousePressed', x, y, button: 'left', clickCount: 1 });
+        await Input.dispatchMouseEvent({ type: 'mouseReleased', x, y, button: 'left', clickCount: 1 });
+        return true;
+      } catch {
+        // fall through to synthetic click
+      }
+    }
+    const clicked = await Runtime.evaluate({
+      expression: `(() => {
+        const trigger = document.querySelector(${JSON.stringify(GROK_MODEL_TRIGGER_SELECTOR)});
+        if (!(trigger instanceof HTMLElement)) return false;
+        trigger.click();
+        return true;
+      })()`,
+      returnByValue: true,
+    }).catch(() => null);
+    return Boolean(clicked?.result?.value);
+  })();
 
-  if (!opened?.result?.value) {
+  if (!opened) {
     logger(`[grok-web] Model picker not found; unable to select "${desiredRaw}".`);
     return;
   }
@@ -290,7 +319,14 @@ async function selectGrokModel(
         const desired = ${JSON.stringify(desired)};
         const items = Array.from(document.querySelectorAll('[role=\"menuitem\"],[role=\"menuitemradio\"]'));
         const labels = items.map((item) => normalize(item.textContent || ''));
-        let matchIndex = labels.findIndex((label) => label && (label.includes(desired) || desired.includes(label)));
+        // Prefer exact/prefix matches so "expert" doesn't match "auto ... expert".
+        let matchIndex = labels.findIndex((label) => label && label === desired);
+        if (matchIndex === -1) {
+          matchIndex = labels.findIndex((label) => label && label.startsWith(desired));
+        }
+        if (matchIndex === -1) {
+          matchIndex = labels.findIndex((label) => label && (label.includes(desired) || desired.includes(label)));
+        }
         if (matchIndex === -1 && desired.includes('grok 4.1 thinking')) {
           matchIndex = labels.findIndex((label) => label.includes('thinking'));
         }
@@ -298,16 +334,28 @@ async function selectGrokModel(
           return { matched: false, labels };
         }
         const target = items[matchIndex];
-        if (target instanceof HTMLElement) {
-          target.click();
+        if (!(target instanceof HTMLElement)) {
+          return { matched: false, labels };
         }
-        return { matched: true, label: labels[matchIndex] };
+        const rect = target.getBoundingClientRect();
+        return { matched: true, label: labels[matchIndex], x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
       })()`,
       returnByValue: true,
     }).catch(() => null);
 
-    const value = selection?.result?.value as { matched?: boolean; label?: string; labels?: string[] } | undefined;
+    const value = selection?.result?.value as
+      | { matched?: boolean; label?: string; labels?: string[]; x?: number; y?: number }
+      | undefined;
     if (value?.matched) {
+      if (typeof value.x === 'number' && typeof value.y === 'number') {
+        await Input.dispatchMouseEvent({ type: 'mouseMoved', x: value.x, y: value.y }).catch(() => undefined);
+        await Input
+          .dispatchMouseEvent({ type: 'mousePressed', x: value.x, y: value.y, button: 'left', clickCount: 1 })
+          .catch(() => undefined);
+        await Input
+          .dispatchMouseEvent({ type: 'mouseReleased', x: value.x, y: value.y, button: 'left', clickCount: 1 })
+          .catch(() => undefined);
+      }
       logger(`[grok-web] Selected Grok model: ${value.label ?? desired}`);
       return;
     }
@@ -704,7 +752,7 @@ export function createGrokWebExecutor(
       await ensureNotBlocked(Runtime, config.headless, logger);
       await ensureGrokLoggedIn(Runtime, logger);
       await waitForComposerReady(Runtime, config.inputTimeoutMs ?? 60_000, logger);
-      await selectGrokModel(Runtime, config.desiredModel ?? undefined, logger);
+      await selectGrokModel(Runtime, Input, config.desiredModel ?? undefined, logger);
 
       const readLocation = async () => {
         const value = await Runtime.evaluate({ expression: 'location.href', returnByValue: true }).catch(() => null);
