@@ -7,10 +7,9 @@ const rawArgs = process.argv.slice(2);
 const args: string[] = rawArgs[0] === '--' ? rawArgs.slice(1) : rawArgs;
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const cliEntry = path.join(here, '../bin/oracle-cli.js');
+const mcpEntry = path.join(here, '../bin/oracle-mcp.js');
 
 function canUseBun(): boolean {
-  // If we are already running under Bun, prefer staying on it.
   if (typeof (process.versions as Record<string, string | undefined>)?.bun === 'string') {
     return true;
   }
@@ -28,12 +27,10 @@ function resolveRuntimeChoice(): RuntimeChoice {
 
 const runtime = resolveRuntimeChoice() === 'bun' ? 'bun' : process.execPath;
 
-// Keep argv shape runtime-agnostic:
-// Node: `node <script> ...`
-// Bun:  `bun <script> ...`
-const child = spawn(runtime, [cliEntry, ...args], {
+const child = spawn(runtime, [mcpEntry, ...args], {
   stdio: 'inherit',
 });
 child.on('exit', (code) => {
   process.exit(code ?? 0);
 });
+

@@ -27,7 +27,7 @@
     "test:pro": "ORACLE_LIVE_TEST=1 vitest run tests/live/openai-live.test.ts",
     "test:coverage": "vitest run --coverage",
     "prepare": "pnpm run build",
-    "mcp": "pnpm run build && node ./dist/bin/oracle-mcp.js"
+    "mcp": "pnpm run build && node ./dist/scripts/run-mcp.js"
   },
   "files": [
     "dist/**/*",
