@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+host="127.0.0.1"
+port="9222"
+user_data_dir="$HOME/.oracle/chrome"
+profile_dir="Profile 2"
+start_url="https://grok.com/"
+
+script_path="$(readlink -f "${BASH_SOURCE[0]}")"
+repo_root="$(cd -- "$(dirname -- "$script_path")/.." && pwd)"
+oracle_cli="${repo_root}/bin/oracle-cli.ts"
+
+if ! command -v google-chrome-stable >/dev/null 2>&1; then
+  echo "wrap-oracle error: google-chrome-stable not found in PATH." >&2
+  exit 1
+fi
+
+devtools_url="http://${host}:${port}/json/version"
+
+if ! curl -fsS --max-time 1 "$devtools_url" >/dev/null 2>&1; then
+  log_path="/tmp/wrap-oracle-chrome.log"
+  chrome_cmd=(
+    google-chrome-stable
+    --remote-debugging-port="${port}"
+    --remote-debugging-address="${host}"
+    --user-data-dir="${user_data_dir}"
+    --profile-directory="${profile_dir}"
+    "about:blank" "${start_url}"
+  )
+
+  # In headless environments, Chrome fails without an X server.
+  # Prefer a virtual framebuffer so the site behaves like a regular browser.
+  if [[ -z "${DISPLAY:-}" ]] && command -v xvfb-run >/dev/null 2>&1; then
+    chrome_cmd=(xvfb-run -a "${chrome_cmd[@]}")
+  fi
+
+  nohup "${chrome_cmd[@]}" >"$log_path" 2>&1 &
+  disown || true
+
+  for _ in $(seq 1 50); do
+    if curl -fsS --max-time 1 "$devtools_url" >/dev/null 2>&1; then
+      break
+    fi
+    sleep 0.2
+  done
+fi
+
+if ! curl -fsS --max-time 1 "$devtools_url" >/dev/null 2>&1; then
+  echo "wrap-oracle error: Chrome DevTools not reachable on ${host}:${port}." >&2
+  exit 1
+fi
+
+export ORACLE_BROWSER_GROK=1
+
+cd "$repo_root"
+exec bun "$oracle_cli" \
+  --remote-chrome "${host}:${port}" \
+  --browser-keep-browser \
+  "$@"
