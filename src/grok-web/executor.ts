@@ -249,12 +249,27 @@ function normalizeModelLabel(input: string): string {
 function resolveGrokModelLabel(input: string): string {
   const normalized = normalizeModelLabel(input);
   if (!normalized) return '';
-  if (normalized === 'grok-4.1' || normalized === 'grok 4.1' || normalized === '4.1') {
-    return 'fast';
+  if (normalized === 'auto' || normalized === 'auto choose' || normalized.includes('auto')) {
+    return 'auto chooses fast or expert';
   }
-  if (normalized === 'grok-4.1-thinking' || normalized === 'grok 4.1 thinking' || normalized === 'thinking') {
-    return 'grok 4.1 thinking';
+  if (
+    normalized === 'grok-4.20' ||
+    normalized === 'grok 4.20' ||
+    normalized === '4.20' ||
+    normalized.includes('4.20') ||
+    normalized.includes('4 agents') ||
+    normalized.includes('beta')
+  ) {
+    return 'grok 4.20 (beta) 4 agents';
   }
+  if (
+    normalized === 'thinking' ||
+    normalized.includes('expert')
+) {
+    return 'expert thinks hard';
+  }
+  if (normalized.includes('heavy') || normalized.includes('team')) return 'heavy team of experts';
+  if (normalized === 'fast' || normalized.includes('fast')) return 'fast';
   return normalized;
 }
 
@@ -326,9 +341,6 @@ async function selectGrokModel(
         }
         if (matchIndex === -1) {
           matchIndex = labels.findIndex((label) => label && (label.includes(desired) || desired.includes(label)));
-        }
-        if (matchIndex === -1 && desired.includes('grok 4.1 thinking')) {
-          matchIndex = labels.findIndex((label) => label.includes('thinking'));
         }
         if (matchIndex === -1) {
           return { matched: false, labels };

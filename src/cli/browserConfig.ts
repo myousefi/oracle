@@ -127,7 +127,8 @@ export async function buildBrowserConfig(options: BrowserFlagOptions): Promise<B
     : shouldUseOverride
       ? desiredModelOverride
       : isGrokModel
-        ? desiredModelOverride ?? null
+        ? desiredModelOverride ?? resolveGrokBrowserLabel(options.model)
+            ?? null
         : options.model;
 
   if (modelStrategy === 'select' && url && isTemporaryChatUrl(url) && /\bpro\b/i.test(desiredModel ?? '')) {
@@ -223,13 +224,23 @@ export function resolveGrokBrowserLabel(input: string | undefined): string | nul
   if (!normalized || !normalized.includes('grok')) {
     return null;
   }
-  if (normalized.includes('expert')) return 'Expert';
-  if (normalized.includes('heavy')) return 'Heavy';
-  if (normalized.includes('thinking')) return 'Grok 4.1 Thinking';
-  if (normalized.includes('fast')) return 'Fast';
-  if (normalized.includes('auto')) return 'Auto';
-  if (normalized.includes('4.1') || normalized.includes('4-1') || normalized.includes('4_1')) {
-    return 'Fast';
+  if (normalized.includes('auto')) return 'Auto Chooses Fast or Expert';
+  if (normalized.includes('heavy') || normalized.includes('team')) return 'Heavy Team of experts';
+  if (
+    normalized === 'grok-4.20' ||
+    normalized === 'grok 4.20' ||
+    normalized === '4.20' ||
+    normalized.includes('4.20') ||
+    normalized.includes('4 agents') ||
+    normalized.includes('beta')
+  ) {
+    return 'Grok 4.20 (Beta) 4 Agents';
+  }
+  if (normalized.includes('thinking') || normalized.includes('expert')) {
+    return 'Expert Thinks hard';
+  }
+  if (normalized.includes('fast')) {
+    return 'Fast Quick responses by 4.1';
   }
   return null;
 }

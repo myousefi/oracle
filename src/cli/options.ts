@@ -182,7 +182,7 @@ export function resolveApiModel(modelValue: string): ModelName {
     return normalized as ModelName;
   }
   if (normalized.includes('grok')) {
-    return 'grok-4.1';
+    return 'grok-4.20';
   }
   if (normalized.includes('claude') && normalized.includes('sonnet')) {
     return 'claude-4.5-sonnet';
@@ -233,7 +233,7 @@ export function inferModelFromLabel(modelValue: string): ModelName {
     return normalized as ModelName;
   }
   if (normalized.includes('grok')) {
-    return 'grok-4.1';
+    return 'grok-4.20';
   }
   if (normalized.includes('claude') && normalized.includes('sonnet')) {
     return 'claude-4.5-sonnet';
