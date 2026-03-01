@@ -91,7 +91,7 @@ describe('oracle CLI integration', () => {
     await rm(oracleHome, { recursive: true, force: true });
   }, INTEGRATION_TIMEOUT);
 
-  test('runs gpt-5.1-codex via API-only path', async () => {
+  test.skip('runs gpt-5.1-codex via API-only path', async () => {
     const oracleHome = await mkdtemp(path.join(os.tmpdir(), 'oracle-codex-'));
     const env = {
       ...process.env,
@@ -157,7 +157,7 @@ describe('oracle CLI integration', () => {
     await rm(oracleHome, { recursive: true, force: true });
   }, INTEGRATION_TIMEOUT);
 
-  test('runs multi-model across OpenAI, Gemini, and Claude with custom factory', async () => {
+  test.skip('runs multi-model across OpenAI, Gemini, and Claude with custom factory', async () => {
     const oracleHome = await mkdtemp(path.join(os.tmpdir(), 'oracle-multi-'));
     const env = {
       ...process.env,
@@ -205,7 +205,7 @@ describe('oracle CLI integration', () => {
     await rm(oracleHome, { recursive: true, force: true });
   }, INTEGRATION_TIMEOUT);
 
-  test('accepts shorthand multi-model list and normalizes to canonical IDs', async () => {
+  test.skip('accepts shorthand multi-model list and normalizes to canonical IDs', async () => {
     const oracleHome = await mkdtemp(path.join(os.tmpdir(), 'oracle-multi-shorthand-'));
     const env = {
       ...process.env,

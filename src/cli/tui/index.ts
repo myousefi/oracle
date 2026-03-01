@@ -313,20 +313,16 @@ interface WizardAnswers {
   promptInput: string;
   slug?: string;
   model: ModelName;
-  models?: ModelName[];
   files: string[];
   chromeProfile?: string;
   chromeCookiePath?: string;
   hideWindow?: boolean;
   keepBrowser?: boolean;
-  mode?: SessionMode;
 }
 
 async function askOracleFlow(version: string, userConfig: UserConfig): Promise<void> {
   const modelChoices = Object.keys(MODEL_CONFIGS) as ModelName[];
-  const hasApiKey = Boolean(process.env.OPENAI_API_KEY);
-  const initialMode: SessionMode = hasApiKey ? 'api' : 'browser';
-  const preferredMode: SessionMode = (userConfig.engine as SessionMode | undefined) ?? initialMode;
+  const mode: SessionMode = 'browser';
 
   const wizardQuestions = [
     {
@@ -334,28 +330,6 @@ async function askOracleFlow(version: string, userConfig: UserConfig): Promise<v
       type: 'input',
       message: 'Paste your prompt text or a path to a file (leave blank to cancel):',
     },
-    ...(hasApiKey
-      ? [
-          {
-            name: 'mode',
-            type: 'select',
-            message: 'Engine',
-            default: preferredMode,
-            choices: [
-              { name: 'API', value: 'api' },
-              { name: 'Browser', value: 'browser' },
-            ],
-          } as DistinctQuestion<WizardAnswers & { mode: SessionMode }>,
-        ]
-      : [
-          {
-            name: 'mode',
-            type: 'select',
-            message: 'Engine',
-            default: preferredMode,
-            choices: [{ name: 'Browser', value: 'browser' }],
-          } as DistinctQuestion<WizardAnswers & { mode: SessionMode }>,
-        ]),
     {
       name: 'slug',
       type: 'input',
@@ -367,19 +341,6 @@ async function askOracleFlow(version: string, userConfig: UserConfig): Promise<v
       message: 'Model',
       default: DEFAULT_MODEL,
       choices: modelChoices,
-    },
-    {
-      name: 'models',
-      type: 'checkbox',
-      message: 'Additional API models to fan out to (optional)',
-      choices: modelChoices,
-      when: (ans: WizardAnswers & { mode: SessionMode }) => ans.mode === 'api',
-      filter: (values: string[]) =>
-        Array.isArray(values)
-          ? values
-              .map((entry) => entry.trim())
-              .filter((entry): entry is ModelName => modelChoices.includes(entry as ModelName))
-          : [],
     },
     {
       name: 'files',
@@ -396,35 +357,30 @@ async function askOracleFlow(version: string, userConfig: UserConfig): Promise<v
       type: 'input',
       message: 'Chrome profile to reuse cookies from:',
       default: 'Default',
-      when: (ans: WizardAnswers & { mode: SessionMode }) => ans.mode === 'browser',
     },
     {
       name: 'chromeCookiePath',
       type: 'input',
       message: 'Cookie DB path (Chromium/Edge, optional):',
-      when: (ans: WizardAnswers & { mode: SessionMode }) => ans.mode === 'browser',
     },
     {
       name: 'hideWindow',
       type: 'confirm',
       message: 'Hide Chrome window (macOS headful only)?',
       default: false,
-      when: (ans: WizardAnswers & { mode: SessionMode }) => ans.mode === 'browser',
     },
     {
       name: 'keepBrowser',
       type: 'confirm',
       message: 'Keep browser open after completion?',
       default: false,
-      when: (ans: WizardAnswers & { mode: SessionMode }) => ans.mode === 'browser',
     },
   ] as const;
 
-  const answers = await inquirer.prompt<WizardAnswers & { mode: SessionMode; promptInput: string }>(
+  const answers = await inquirer.prompt<WizardAnswers & { promptInput: string }>(
     wizardQuestions as unknown as Parameters<(typeof inquirer)['prompt']>[0],
   );
 
-  const mode = (answers.mode ?? initialMode) as SessionMode;
   const prompt = await resolvePromptInput(answers.promptInput);
   if (!prompt.trim()) {
     console.log(chalk.yellow('Cancelled.'));
@@ -433,21 +389,11 @@ async function askOracleFlow(version: string, userConfig: UserConfig): Promise<v
   const promptWithSuffix = userConfig.promptSuffix ? `${prompt.trim()}\n${userConfig.promptSuffix}` : prompt;
   await sessionStore.ensureStorage();
   await pruneOldSessions(userConfig.sessionRetentionHours, (message) => console.log(chalk.dim(message)));
-  const normalizedMultiModels =
-    Array.isArray(answers.models) && answers.models.length > 0
-      ? Array.from(
-          new Set(
-            [answers.model, ...answers.models].filter((entry): entry is ModelName =>
-              modelChoices.includes(entry as ModelName),
-            ),
-          ),
-        )
-      : [answers.model];
   const runOptions: RunOracleOptions = {
     prompt: promptWithSuffix,
     model: answers.model,
     file: answers.files,
-    models: normalizedMultiModels.length > 1 ? normalizedMultiModels : undefined,
+    models: undefined,
     slug: answers.slug,
     filesReport: false,
     maxInput: undefined,

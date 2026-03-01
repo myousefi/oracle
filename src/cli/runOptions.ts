@@ -3,7 +3,7 @@ import { DEFAULT_MODEL, MODEL_CONFIGS } from '../oracle.js';
 import type { UserConfig } from '../config.js';
 import type { EngineMode } from './engine.js';
 import { resolveEngine } from './engine.js';
-import { normalizeModelOption, inferModelFromLabel, resolveApiModel, normalizeBaseUrl } from './options.js';
+import { normalizeModelOption, inferModelFromLabel, normalizeBaseUrl } from './options.js';
 import { resolveGeminiModelId } from '../oracle/gemini.js';
 import { PromptValidationError } from '../oracle/errors.js';
 import { normalizeChatGptModelForBrowser } from './browserConfig.js';
@@ -21,7 +21,6 @@ export interface ResolveRunOptionsInput {
 export interface ResolvedRunOptions {
   runOptions: RunOracleOptions;
   resolvedEngine: EngineMode;
-  engineCoercedToApi?: boolean;
 }
 
 export function resolveRunOptionsFromConfig({
@@ -33,44 +32,41 @@ export function resolveRunOptionsFromConfig({
   userConfig,
   env = process.env,
 }: ResolveRunOptionsInput): ResolvedRunOptions {
+  if (
+    engine === 'api' ||
+    userConfig?.engine === 'api' ||
+    (env.ORACLE_ENGINE ?? '').trim().toLowerCase() === 'api'
+  ) {
+    throw new PromptValidationError('API engine is disabled in this branch. Browser execution is required.');
+  }
   const resolvedEngine = resolveEngineWithConfig({ engine, configEngine: userConfig?.engine, env });
-  const browserRequested = engine === 'browser';
-  const browserConfigured = userConfig?.engine === 'browser';
   const requestedModelList = Array.isArray(models) ? models : [];
   const normalizedRequestedModels = requestedModelList.map((entry) => normalizeModelOption(entry)).filter(Boolean);
 
   const cliModelArg = normalizeModelOption(model ?? userConfig?.model) || DEFAULT_MODEL;
-  const inferredModel =
-    resolvedEngine === 'browser' && normalizedRequestedModels.length === 0
-      ? inferModelFromLabel(cliModelArg)
-      : resolveApiModel(cliModelArg);
-  // Browser engine maps Pro/legacy aliases to the latest ChatGPT picker targets (GPT-5.2 / GPT-5.2 Pro).
-  const resolvedModel = resolvedEngine === 'browser' ? normalizeChatGptModelForBrowser(inferredModel) : inferredModel;
-  const isCodex = resolvedModel.startsWith('gpt-5.1-codex');
-  const isClaude = resolvedModel.startsWith('claude');
-  const isGrok = resolvedModel.startsWith('grok');
+  if (normalizedRequestedModels.length > 1) {
+    throw new PromptValidationError('Multi-model execution is not supported in browser-only mode.');
+  }
 
-  const engineWasBrowser = resolvedEngine === 'browser';
-  const allModels: ModelName[] =
-    normalizedRequestedModels.length > 0
-      ? Array.from(new Set(normalizedRequestedModels.map((entry) => resolveApiModel(entry))))
-      : [resolvedModel];
+  const selectedRawModel =
+    normalizedRequestedModels.length === 0 ? cliModelArg : normalizedRequestedModels[0] ?? DEFAULT_MODEL;
+  const inferredModel = inferModelFromLabel(selectedRawModel);
+  // Browser engine maps Pro/legacy aliases to the latest ChatGPT picker targets (GPT-5.2 / GPT-5.2 Pro).
+  const resolvedModel = normalizeChatGptModelForBrowser(inferredModel);
   const isBrowserCompatible = (m: string) =>
-    m.startsWith('gpt-') || m.startsWith('gemini') || m.startsWith('grok');
-  const hasNonBrowserCompatibleTarget = (browserRequested || browserConfigured) && allModels.some((m) => !isBrowserCompatible(m));
-  if (hasNonBrowserCompatibleTarget) {
+    (m.startsWith('gpt-') && !m.includes('codex')) || m.startsWith('gemini') || m.startsWith('grok');
+  if (!isBrowserCompatible(resolvedModel)) {
     throw new PromptValidationError(
-      'Browser engine only supports GPT, Gemini, and Grok models. ' +
-        'Re-run with --engine api for Claude or other models.',
-      { engine: 'browser', models: allModels },
+      'Browser-only mode supports GPT, Gemini, and Grok models only.',
+      { engine: 'browser' },
     );
   }
 
-  const engineCoercedToApi = engineWasBrowser && (isCodex || isClaude);
-  const fixedEngine: EngineMode =
-    isCodex || isClaude || normalizedRequestedModels.length > 0
-      ? 'api'
-      : resolvedEngine;
+  const isGrok = resolvedModel.startsWith('grok');
+  const baseUrl = normalizeBaseUrl(
+    userConfig?.apiBaseUrl ??
+      (isGrok ? env.XAI_BASE_URL : env.OPENAI_BASE_URL),
+  );
 
   const promptWithSuffix =
     userConfig?.promptSuffix && userConfig.promptSuffix.trim().length > 0
@@ -82,23 +78,13 @@ export function resolveRunOptionsFromConfig({
   const heartbeatIntervalMs =
     userConfig?.heartbeatSeconds !== undefined ? userConfig.heartbeatSeconds * 1000 : 30_000;
 
-  const baseUrl = normalizeBaseUrl(
-    userConfig?.apiBaseUrl ??
-      (isClaude ? env.ANTHROPIC_BASE_URL : isGrok ? env.XAI_BASE_URL : env.OPENAI_BASE_URL),
-  );
-  const uniqueMultiModels: ModelName[] = normalizedRequestedModels.length > 0 ? allModels : [];
-  const includesCodexMultiModel = uniqueMultiModels.some((entry) => entry.startsWith('gpt-5.1-codex'));
-  if (includesCodexMultiModel && browserRequested) {
-    // Silent coerce; multi-model still forces API.
-  }
-
-  const chosenModel: ModelName = uniqueMultiModels[0] ?? resolvedModel;
-  const effectiveModelId = resolveEffectiveModelId(chosenModel);
+  const effectiveModelId = resolveEffectiveModelId(resolvedModel);
+  const runModelList = normalizedRequestedModels.length > 0 ? [resolvedModel] : undefined;
 
   const runOptions: RunOracleOptions = {
     prompt: promptWithSuffix,
-    model: chosenModel,
-    models: uniqueMultiModels.length > 0 ? uniqueMultiModels : undefined,
+    model: resolvedModel,
+    models: runModelList && runModelList.length > 0 ? runModelList : undefined,
     file: files ?? [],
     search,
     heartbeatIntervalMs,
@@ -108,7 +94,7 @@ export function resolveRunOptionsFromConfig({
     effectiveModelId,
   };
 
-  return { runOptions, resolvedEngine: fixedEngine, engineCoercedToApi };
+  return { runOptions, resolvedEngine: 'browser' };
 }
 
 function resolveEngineWithConfig({
@@ -120,11 +106,10 @@ function resolveEngineWithConfig({
   configEngine?: EngineMode;
   env: NodeJS.ProcessEnv;
 }): EngineMode {
-  if (engine) return engine;
-  const envOverride = (env.ORACLE_ENGINE ?? '').trim().toLowerCase();
-  if (envOverride === 'api' || envOverride === 'browser') {
-    return envOverride as EngineMode;
+  if (engine === 'api' || configEngine === 'api' || (env.ORACLE_ENGINE ?? '').trim().toLowerCase() === 'api') {
+    throw new PromptValidationError('API engine is disabled in this branch. Browser execution is required.');
   }
+  if (engine) return engine;
   if (configEngine) return configEngine;
   return resolveEngine({ engine: undefined, env });
 }

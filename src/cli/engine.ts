@@ -1,23 +1,20 @@
-import { isProModel } from '../oracle/modelResolver.js';
-
 export type EngineMode = 'api' | 'browser';
 
 export function defaultWaitPreference(model: string, engine: EngineMode): boolean {
-  // Pro-class API runs can take a long time; prefer non-blocking unless explicitly overridden.
-  if (engine === 'api' && isProModel(model)) {
-    return false;
-  }
-  return true; // browser or non-pro models are fast enough to block by default
+  // Browser runs are expected to be interactive and are kept attached unless explicitly detached.
+  return true;
 }
 
 /**
- * Determine which engine to use based on CLI flags and the environment.
+ * Determine which engine to use.
+ *
+ * In this branch, execution is browser-only. The API engine is disabled and
+ * all valid requests use browser automation.
  *
  * Precedence:
- * 1) Legacy --browser flag forces browser.
- * 2) Explicit --engine value.
- * 3) ORACLE_ENGINE environment override (api|browser).
- * 4) OPENAI_API_KEY decides: api when set, otherwise browser.
+ * 1) Legacy --browser flag keeps this as browser.
+ * 2) Any explicit --engine value (including invalid legacy values) maps to browser.
+ * 3) Environment and key presence are ignored.
  */
 export function resolveEngine(
   {
@@ -26,25 +23,8 @@ export function resolveEngine(
     env,
   }: { engine?: EngineMode; browserFlag?: boolean; env: NodeJS.ProcessEnv },
 ): EngineMode {
-  if (browserFlag) {
+  if (browserFlag || engine === 'browser' || engine === 'api') {
     return 'browser';
   }
-  if (engine) {
-    return engine;
-  }
-  const envEngine = normalizeEngineMode(env.ORACLE_ENGINE);
-  if (envEngine) {
-    return envEngine;
-  }
-  return env.OPENAI_API_KEY ? 'api' : 'browser';
-}
-
-function normalizeEngineMode(raw: unknown): EngineMode | null {
-  if (typeof raw !== 'string') {
-    return null;
-  }
-  const normalized = raw.trim().toLowerCase();
-  if (normalized === 'api') return 'api';
-  if (normalized === 'browser') return 'browser';
-  return null;
+  return 'browser';
 }

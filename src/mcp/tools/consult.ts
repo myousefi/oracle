@@ -47,13 +47,11 @@ const consultInputShape = {
   models: z
     .array(z.string())
     .optional()
-    .describe('Multi-model fan-out (API engine only). Cannot be combined with browser automation.'),
+    .describe('Multi-model runs are not supported in browser mode. Provide a single model.'),
   engine: z
-    .enum(['api', 'browser'])
+    .enum(['browser'])
     .optional()
-    .describe(
-      'Execution engine. `api` uses OpenAI/other providers. `browser` automates ChatGPT/Grok in Chrome or uses the Gemini web client (attachments supported where available).',
-    ),
+    .describe('Execution engine. Browser mode automates ChatGPT/Grok in Chrome or uses the Gemini web client.'),
   browserModelLabel: z
     .string()
     .optional()
@@ -81,7 +79,7 @@ const consultInputShape = {
   search: z
     .boolean()
     .optional()
-    .describe('API-only: enable/disable the provider search tool (browser engine ignores this).'),
+    .describe('Enable/disable the provider search tool (browser mode ignores this).'),
   slug: z
     .string()
     .optional()
@@ -166,7 +164,7 @@ export function registerConsultTool(server: McpServer): void {
     {
       title: 'Run an oracle session',
       description:
-        'Run a one-shot Oracle session (API or ChatGPT browser automation). Use `files` to attach project context. For browser-based image/file uploads, set `browserAttachments:"always"`. Sessions are stored under `ORACLE_HOME_DIR` (shared with the CLI).',
+        'Run a one-shot Oracle session using browser automation. Use `files` to attach project context. For browser-based image/file uploads, set `browserAttachments:"always"`. Sessions are stored under `ORACLE_HOME_DIR` (shared with the CLI).',
       // Cast to any to satisfy SDK typings across differing Zod versions.
       inputSchema: consultInputShape,
       outputSchema: consultOutputShape,
@@ -217,7 +215,7 @@ export function registerConsultTool(server: McpServer): void {
         return {
           isError: true,
           content: textContent(
-            `Grok browser automation is not supported with remote hosts yet. Disable remote browser routing or use the API engine instead.`,
+            `Grok browser automation is not supported with remote hosts yet. Disable remote browser routing and run locally.`,
           ),
         };
       }

@@ -36,7 +36,6 @@ import {
   resolvePreviewMode,
   normalizeModelOption,
   normalizeBaseUrl,
-  resolveApiModel,
   inferModelFromLabel,
   parseHeartbeatOption,
   parseTimeoutOption,
@@ -48,7 +47,11 @@ import { copyToClipboard } from '../src/cli/clipboard.js';
 import { buildMarkdownBundle } from '../src/cli/markdownBundle.js';
 import { shouldDetachSession } from '../src/cli/detach.js';
 import { applyHiddenAliases } from '../src/cli/hiddenAliases.js';
-import { buildBrowserConfig, resolveBrowserModelLabel } from '../src/cli/browserConfig.js';
+import {
+  buildBrowserConfig,
+  normalizeChatGptModelForBrowser,
+  resolveBrowserModelLabel,
+} from '../src/cli/browserConfig.js';
 import { performSessionRun } from '../src/cli/sessionRunner.js';
 import type { BrowserSessionRunnerDeps } from '../src/browser/sessionRunner.js';
 import { isMediaFile } from '../src/browser/prompt.js';
@@ -288,13 +291,13 @@ program
   .option('-s, --slug <words>', 'Custom session slug (3-5 words).')
   .option(
     '-m, --model <model>',
-    'Model to target (gpt-5.2-pro default; also supports gpt-5.1-pro alias). Also gpt-5-pro, gpt-5.1, gpt-5.1-codex API-only, gpt-5.2, gpt-5.2-instant, gpt-5.2-pro, gemini-3-pro, claude-4.5-sonnet, claude-4.1-opus, or ChatGPT labels like "5.2 Thinking" for browser runs).',
+    'Model to target (gpt-5.2-pro default). Also supports gpt-5-pro, gpt-5.1, gpt-5.2, gpt-5.2-thinking, gpt-5.2-instant, gemini-3-pro, or ChatGPT labels like "5.2 Thinking".',
     normalizeModelOption,
   )
   .addOption(
     new Option(
       '--models <models>',
-      'Comma-separated API model list to query in parallel (e.g., "gpt-5.2-pro,gemini-3-pro").',
+      'Multi-model browser execution is no longer supported; use a single --model.',
     )
       .argParser(collectModelList)
       .default([]),
@@ -302,11 +305,11 @@ program
   .addOption(
     new Option(
       '-e, --engine <mode>',
-      'Execution engine (api | browser). Browser engine: GPT models automate ChatGPT; Gemini models use a cookie-based client for gemini.google.com. If omitted, oracle picks api when OPENAI_API_KEY is set, otherwise browser.',
-    ).choices(['api', 'browser'])
+      'Browser execution only. Runs GPT/Grok through ChatGPT and Gemini through the Gemini web client.',
+    ).choices(['browser'])
   )
   .addOption(
-    new Option('--mode <mode>', 'Alias for --engine (api | browser).').choices(['api', 'browser']).hideHelp(),
+    new Option('--mode <mode>', 'Alias for --engine (browser).').choices(['browser']).hideHelp(),
   )
   .option('--files-report', 'Show token usage per attached file (also prints automatically when files exceed the token budget).', false)
   .option('-v, --verbose', 'Enable verbose logging for all operations.', false)
@@ -558,10 +561,10 @@ program.addHelpText(
   'after',
   `
 Examples:
-  # Quick API run with two files
+  # Browser run with two files
   oracle --prompt "Summarize the risk register" --file docs/risk-register.md docs/risk-matrix.md
 
-  # Browser run (no API key) + globbed TypeScript sources, excluding tests
+  # Browser automation with scoped TypeScript sources, excluding tests
   oracle --engine browser --prompt "Review the TS data layer" \\
     --file "src/**/*.ts" --file "!src/**/*.test.ts"
 
@@ -1098,6 +1101,10 @@ async function runRootCommand(options: CliOptions): Promise<void> {
   }
 
   const preferredEngine = options.engine ?? userConfig.engine;
+  const requestedApiEngine = preferredEngine === 'api' || (process.env.ORACLE_ENGINE ?? '').trim().toLowerCase() === 'api';
+  if (requestedApiEngine) {
+    throw new Error('API engine is disabled in this branch. Browser execution is required.');
+  }
   let engine: EngineMode = resolveEngine({ engine: preferredEngine, browserFlag: options.browser, env: process.env });
   if (options.browser) {
     console.log(chalk.yellow('`--browser` is deprecated; use `--engine browser` instead.'));
@@ -1124,6 +1131,9 @@ async function runRootCommand(options: CliOptions): Promise<void> {
   if (remoteHost && options.remoteChrome) {
     throw new Error('--remote-host cannot be combined with --remote-chrome.');
   }
+  if (multiModelProvided) {
+    throw new Error('--models is not supported in browser-only mode. Use --model only.');
+  }
 
   if (optionUsesDefault('azureEndpoint')) {
     if (process.env.AZURE_OPENAI_ENDPOINT) {
@@ -1147,69 +1157,38 @@ async function runRootCommand(options: CliOptions): Promise<void> {
     }
   }
 
-  const normalizedMultiModels: ModelName[] = multiModelProvided
-    ? Array.from(new Set(options.models!.map((entry) => resolveApiModel(entry))))
-    : [];
-  const cliModelArg = normalizeModelOption(options.model) || (multiModelProvided ? '' : DEFAULT_MODEL);
-  const resolvedModelCandidate: ModelName = multiModelProvided
-    ? normalizedMultiModels[0]
-    : engine === 'browser'
-      ? inferModelFromLabel(cliModelArg || DEFAULT_MODEL)
-      : resolveApiModel(cliModelArg || DEFAULT_MODEL);
-  const primaryModelCandidate = normalizedMultiModels[0] ?? resolvedModelCandidate;
+  const cliModelArg = normalizeModelOption(options.model) || DEFAULT_MODEL;
+  const resolvedModelCandidate: ModelName = inferModelFromLabel(cliModelArg);
+  const primaryModelCandidate = resolvedModelCandidate;
   const isGemini = primaryModelCandidate.startsWith('gemini');
-  const isCodex = primaryModelCandidate.startsWith('gpt-5.1-codex');
-  const isClaude = primaryModelCandidate.startsWith('claude');
+  const isGrok = primaryModelCandidate.startsWith('grok');
   const userForcedBrowser = options.browser || options.engine === 'browser';
   const isBrowserCompatible = (model: string) =>
-    model.startsWith('gpt-') || model.startsWith('gemini') || model.startsWith('grok');
-  const hasNonBrowserCompatibleTarget =
-    (engine === 'browser' || userForcedBrowser) &&
-    (normalizedMultiModels.length > 0
-      ? normalizedMultiModels.some((model) => !isBrowserCompatible(model))
-      : !isBrowserCompatible(resolvedModelCandidate));
+    (model.startsWith('gpt-') && !model.includes('codex')) || model.startsWith('gemini') || model.startsWith('grok');
+  const hasNonBrowserCompatibleTarget = (engine === 'browser' || userForcedBrowser) && !isBrowserCompatible(primaryModelCandidate);
   if (hasNonBrowserCompatibleTarget) {
     throw new Error(
-      'Browser engine only supports GPT, Gemini, and Grok models. ' +
-        'Re-run with --engine api for Claude or other models.',
+      'Browser execution supports GPT, Gemini, and Grok models only.',
     );
   }
-  if (isClaude && engine === 'browser') {
-    console.log(chalk.dim('Browser engine is not supported for Claude models; switching to API.'));
-    engine = 'api';
-  }
-  if (isCodex && engine === 'browser') {
-    console.log(chalk.dim('Browser engine is not supported for gpt-5.1-codex; switching to API.'));
-    engine = 'api';
-  }
-  if (normalizedMultiModels.length > 0) {
-    engine = 'api';
-  }
-  if (remoteHost && normalizedMultiModels.length > 0) {
-    throw new Error('--remote-host does not support --models yet. Use API engine locally instead.');
-  }
-  const resolvedModel: ModelName =
-    normalizedMultiModels[0] ?? (isGemini ? resolveApiModel(cliModelArg) : resolvedModelCandidate);
+  const resolvedModel: ModelName = normalizeChatGptModelForBrowser(primaryModelCandidate);
   const effectiveModelId = resolvedModel.startsWith('gemini')
     ? resolveGeminiModelId(resolvedModel)
     : isKnownModel(resolvedModel)
       ? MODEL_CONFIGS[resolvedModel].apiModel ?? resolvedModel
       : resolvedModel;
   const resolvedBaseUrl = normalizeBaseUrl(
-    options.baseUrl ?? (isClaude ? process.env.ANTHROPIC_BASE_URL : process.env.OPENAI_BASE_URL),
+    options.baseUrl ?? (isGrok ? process.env.XAI_BASE_URL : process.env.OPENAI_BASE_URL),
   );
   const { models: _rawModels, ...optionsWithoutModels } = options;
   const resolvedOptions: ResolvedCliOptions = { ...optionsWithoutModels, model: resolvedModel };
-  if (normalizedMultiModels.length > 0) {
-    resolvedOptions.models = normalizedMultiModels;
-  }
   resolvedOptions.baseUrl = resolvedBaseUrl;
   resolvedOptions.effectiveModelId = effectiveModelId;
   resolvedOptions.writeOutputPath = resolveOutputPath(options.writeOutput, process.cwd());
 
   // Decide whether to block until completion:
   // - explicit --wait / --no-wait wins
-  // - otherwise block for fast models (gpt-5.1, browser) and detach by default for pro API runs
+  // - otherwise keep browser runs attached unless the user requests --no-wait.
   let waitPreference = resolveWaitFlag({
     waitFlag: options.wait,
     model: resolvedModel,
@@ -1389,7 +1368,7 @@ async function runRootCommand(options: CliOptions): Promise<void> {
   let geminiWeb: GeminiWebOptions | undefined;
   if (browserConfig && remoteHost && resolvedModel.startsWith('grok')) {
     throw new Error(
-      '--remote-host does not support Grok browser automation yet. Run locally or use --engine api for Grok.',
+      '--remote-host does not support Grok browser automation yet. Run locally without --remote-host.',
     );
   }
   if (browserConfig && remoteHost) {

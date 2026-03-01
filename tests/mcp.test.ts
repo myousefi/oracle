@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { mapConsultToRunOptions } from '../src/mcp/utils.js';
 
 describe('mcp utils', () => {
-  it('maps api defaults', () => {
-    const { runOptions, resolvedEngine } = mapConsultToRunOptions({ prompt: 'hi', files: [], model: 'gpt-5.2-pro', engine: 'api' });
-    expect(resolvedEngine).toBe('api');
+  it('maps browser defaults', () => {
+    const { runOptions, resolvedEngine } = mapConsultToRunOptions({ prompt: 'hi', files: [], model: 'gpt-5.2-pro' });
+    expect(resolvedEngine).toBe('browser');
     expect(runOptions.model).toBe('gpt-5.2-pro');
   });
 

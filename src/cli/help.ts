@@ -73,12 +73,12 @@ function renderHelpFooter(program: Command, colors: HelpColors): string {
     `${colors.bullet('•')} When comparing multiple repos/files, spell out each repo + path + role (e.g., “Project A SettingsView → apps/project-a/Sources/SettingsView.swift; Project B SettingsView → ../project-b/mac/...”) so the model knows exactly which file is which.`,
     `${colors.bullet('•')} Best results: 6–30 sentences plus key source files; very short prompts often yield generic answers.`,
     `${colors.bullet('•')} Oracle is one-shot: it does not remember prior runs, so start fresh each time with full context.`,
-    `${colors.bullet('•')} Run ${colors.accent('--files-report')} to inspect token spend before hitting the API.`,
-    `${colors.bullet('•')} Non-preview runs spawn detached sessions (especially gpt-5.2-pro API). If the CLI times out, do not re-run — reattach with ${colors.accent('oracle session <slug>')} to resume/inspect the existing run.`,
+    `${colors.bullet('•')} Run ${colors.accent('--files-report')} to inspect token spend before launching your browser session.`,
+    `${colors.bullet('•')} Non-preview runs may detach for long browser sessions. If the CLI times out, do not re-run — reattach with ${colors.accent('oracle session <slug>')} to resume/inspect the existing run.`,
     `${colors.bullet('•')} Set a memorable 3–5 word slug via ${colors.accent('--slug "<words>"')} to keep session IDs tidy.`,
     `${colors.bullet('•')} Finished sessions auto-hide preamble logs when reattached; raw timestamps remain in the saved log file.`,
     `${colors.bullet('•')} Need hidden flags? Run ${colors.accent(`${program.name()} --help --verbose`)} to list search/token/browser overrides.`,
-    `${colors.bullet('•')} If any Oracle session is already running, do not start new API runs. Attach to the existing browser session instead; only trigger API calls when you explicitly mean to.`,
+    `${colors.bullet('•')} If any Oracle session is already running, do not start duplicate runs. Attach to the existing browser session instead.`,
     `${colors.bullet('•')} Duplicate prompt guard: if the same prompt is already running, new runs are blocked unless you pass ${colors.accent('--force')}—prefer reattaching instead of spawning duplicates.`,
   ].join('\n');
 
@@ -91,8 +91,8 @@ function renderHelpFooter(program: Command, colors: HelpColors): string {
       'Build the bundle, print it, and copy it for manual paste into ChatGPT.',
     ),
     formatExample(
-      `${program.name()} --prompt "Cross-check the data layer assumptions" --models gpt-5.2-pro,gemini-3-pro --file "src/**/*.ts"`,
-      'Run multiple API models in one go and aggregate cost/usage.',
+      `${program.name()} --prompt "Cross-check the data layer assumptions" --model gpt-5.2-pro --file "src/**/*.ts"`,
+      'Run browser automation with a single model and strong source context.',
     ),
     formatExample(
       `${program.name()} status --hours 72 --limit 50`,

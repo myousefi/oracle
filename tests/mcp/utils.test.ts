@@ -2,18 +2,17 @@ import { describe, expect, test } from 'vitest';
 import { mapConsultToRunOptions } from '../../src/mcp/utils.js';
 
 describe('mapConsultToRunOptions', () => {
-  test('passes multi-model selections through to run options', () => {
+  test('rejects multi-model selections', () => {
     const env: NodeJS.ProcessEnv = {};
-    env.OPENAI_API_KEY = 'sk-test';
-	    const { runOptions } = mapConsultToRunOptions({
-	      prompt: 'multi',
-	      files: [],
-	      model: 'gpt-5.2-pro',
-	      models: ['gemini-3-pro'],
-	      userConfig: undefined,
-	      env,
-	    });
-	    expect(runOptions.model).toBe('gpt-5.2-pro');
-	    expect(runOptions.models).toEqual(['gpt-5.2-pro', 'gemini-3-pro']);
-	  });
+    expect(() =>
+      mapConsultToRunOptions({
+        prompt: 'multi',
+        files: [],
+        model: 'gpt-5.2-pro',
+        models: ['gemini-3-pro'],
+        userConfig: undefined,
+        env,
+      }),
+    ).toThrow('Multi-model execution is not supported in browser-only mode.');
+  });
 });
