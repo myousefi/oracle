@@ -246,7 +246,7 @@ program.hook('preAction', (thisCommand) => {
 });
 program
   .name('oracle')
-  .description('One-shot GPT-5.2 Pro / GPT-5.2 / GPT-5.1 Codex tool for hard questions that benefit from large file context and server-side search.')
+  .description('One-shot GPT-5.4 Pro / GPT-5.4 / GPT-5.1 Codex tool for hard questions that benefit from large file context and server-side search.')
   .version(VERSION)
   .argument('[prompt]', 'Prompt text (shorthand for --prompt).')
   .option('-p, --prompt <text>', 'User prompt to send to the model.')
@@ -291,7 +291,7 @@ program
   .option('-s, --slug <words>', 'Custom session slug (3-5 words).')
   .option(
     '-m, --model <model>',
-    'Model to target (gpt-5.2-pro default). Also supports gpt-5-pro, gpt-5.1, gpt-5.2, gpt-5.2-thinking, gpt-5.2-instant, gemini-3-pro, or ChatGPT labels like "5.2 Thinking".',
+    'Model to target (gpt-5.4-pro default). Also supports gpt-5.4, gpt-5.4-thinking, gpt-5.3-instant, legacy GPT-5.2/5.1 aliases, gemini-3-pro, or ChatGPT labels like "5.4 Thinking".',
     normalizeModelOption,
   )
   .addOption(
@@ -324,7 +324,7 @@ program
   .addOption(
     new Option(
       '--timeout <seconds|auto>',
-      'Overall timeout before aborting the API call (auto = 60m for gpt-5.2-pro, 120s otherwise).',
+      'Overall timeout before aborting the API call (auto = 60m for gpt-5.4-pro, 120s otherwise).',
     )
       .argParser(parseTimeoutOption)
       .default('auto'),

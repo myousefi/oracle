@@ -63,7 +63,7 @@ export function resolveBrowserConfig(config: BrowserAutomationConfig | undefined
   ) {
     throw new Error(
       'Temporary Chat mode does not expose Pro models in the ChatGPT model picker. ' +
-        'Remove "temporary-chat=true" from your browser URL, or use a non-Pro model label (e.g. "GPT-5.2").',
+        'Remove "temporary-chat=true" from your browser URL, or use a non-Pro model label (e.g. "GPT-5.4 Thinking").',
     );
   }
   const isWindows = process.platform === 'win32';

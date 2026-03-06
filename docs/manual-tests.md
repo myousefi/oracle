@@ -88,7 +88,7 @@ Debug note: when you have a live ChatGPT tab open under a DevTools port and need
 1. **Prompt Submission & Model Switching**
    - With Chrome signed in and cookie sync enabled, run  
      ```bash
-     pnpm run oracle -- --engine browser --model "GPT-5.2" \
+     pnpm run oracle -- --engine browser --model "GPT-5.4 Thinking" \
        --prompt "Line 1\nLine 2\nLine 3"
      ```
    - Observe logs for:
@@ -100,7 +100,7 @@ Debug note: when you have a live ChatGPT tab open under a DevTools port and need
 2. **Markdown Capture**
    - Prompt:
      ```bash
-     pnpm run oracle -- --engine browser --model "GPT-5.2" \
+     pnpm run oracle -- --engine browser --model "GPT-5.4 Thinking" \
        --prompt "Produce a short bullet list with code fencing."
      ```
    - Expected CLI output:
@@ -138,22 +138,22 @@ Document results (pass/fail, session IDs) in PR descriptions so reviewers can au
 
 Run these four smoke tests whenever we touch browser automation:
 
-1. **GPT-5.2 simple prompt**  
-   `pnpm run oracle -- --engine browser --model "GPT-5.2" --prompt "Give me two short markdown bullet points about tables"`  
+1. **GPT-5.4 Thinking simple prompt**  
+   `pnpm run oracle -- --engine browser --model "GPT-5.4 Thinking" --prompt "Give me two short markdown bullet points about tables"`  
    Expect two markdown bullets, no files/search referenced. Note the session ID (e.g., `give-me-two-short-markdown`).
 
-2. **GPT-5.2 simple prompt**  
-   `pnpm run oracle -- --engine browser --model gpt-5.2 --prompt "List two reasons Markdown is handy"`  
+2. **GPT-5.4 simple prompt**  
+   `pnpm run oracle -- --engine browser --model gpt-5.4 --prompt "List two reasons Markdown is handy"`  
    Confirm the answer arrives (and only once) even if it takes ~2–3 minutes.
 
-3. **GPT-5.2 + attachment**  
+3. **GPT-5.4 Thinking + attachment**  
    Prepare `/tmp/browser-md.txt` with a short note, then run  
-   `pnpm run oracle -- --engine browser --model "GPT-5.2" --prompt "Summarize the key idea from the attached note" --file /tmp/browser-md.txt`  
+   `pnpm run oracle -- --engine browser --model "GPT-5.4 Thinking" --prompt "Summarize the key idea from the attached note" --file /tmp/browser-md.txt`  
    Ensure upload logs show “Attachment queued” and the answer references the file contents explicitly.
 
-4. **GPT-5.2 + attachment (verbose)**  
+4. **GPT-5.4 + attachment (verbose)**  
    Prepare `/tmp/browser-report.txt` with faux metrics, then run  
-   `pnpm run oracle -- --engine browser --model gpt-5.2 --prompt "Use the attachment to report current CPU and memory figures" --file /tmp/browser-report.txt --verbose`  
+   `pnpm run oracle -- --engine browser --model gpt-5.4 --prompt "Use the attachment to report current CPU and memory figures" --file /tmp/browser-report.txt --verbose`  
    Verify verbose logs show attachment upload and the final answer matches the file data.
 
 Record session IDs and outcomes in the PR description (pass/fail, notable delays). This ensures reviewers can audit real runs.
@@ -198,7 +198,7 @@ Use this when you need to inspect the live ChatGPT composer (DOM state, markdown
    ```bash
    tmux new -d -s oracle-browser \\
      "pnpm run oracle -- --engine browser --browser-keep-browser \\
-       --model 'GPT-5.2 Pro' --prompt 'Debug via DevTools.'"
+       --model 'GPT-5.4 Pro' --prompt 'Debug via DevTools.'"
    ```
    Keeping the run in tmux prevents your shell from blocking and ensures Chrome stays open afterward.
 
@@ -248,7 +248,7 @@ These Vitest cases hit the real OpenAI API to exercise both transports:
    export ORACLE_LIVE_TEST=1
    pnpm vitest run tests/live/openai-live.test.ts
    ```
-2. The first test sends a `gpt-5.1-pro` prompt (API: `gpt-5.2-pro`) and expects the CLI to stay
+2. The first test sends a `gpt-5.1-pro` prompt (API: `gpt-5.4-pro`) and expects the CLI to stay
    in background mode until OpenAI finishes (up to 30 minutes). The second test
    targets the standard GPT-5 (`gpt-5.1`) path with foreground streaming.
 3. Watch the console for `Reconnected to OpenAI background response...` if

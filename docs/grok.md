@@ -1,9 +1,9 @@
-# Grok 4.1 (xAI) Support
+# Grok 4.20 (xAI) Support
 
 Status: **experimental** (November 21, 2025)  
 Owner: Oracle CLI
 
-- Model key: `grok-4.1` (mapped to API id `grok-4-1-fast-reasoning`). Alias: `grok`.
+- Model key: `grok-4.20` (mapped to API id `grok-4-20-fast-reasoning`). Alias: `grok`.
 - Endpoint: defaults to `https://api.x.ai/v1` or `XAI_BASE_URL`. Uses the OpenAI **Responses API** surface.
 - Auth: `XAI_API_KEY`.
 - Background runs: **not supported** by the Grok API (requests with `background: true` are rejected). Oracle forces foreground streaming even if `--background` is set.

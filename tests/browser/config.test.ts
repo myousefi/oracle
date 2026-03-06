@@ -43,7 +43,7 @@ describe('resolveBrowserConfig', () => {
     expect(() =>
       resolveBrowserConfig({
         url: 'https://chatgpt.com/?temporary-chat=true',
-        desiredModel: 'GPT-5.2 Pro',
+        desiredModel: 'GPT-5.4 Pro',
       }),
     ).toThrow(/Temporary Chat/i);
   });

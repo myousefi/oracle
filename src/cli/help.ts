@@ -60,7 +60,7 @@ export function applyHelpStyling(program: Command, version: string, isTty: boole
 }
 
 function renderHelpBanner(version: string, colors: HelpColors): string {
-  const subtitle = 'Prompt + files required — GPT-5.2 Pro/GPT-5.2 for tough questions with code/file context.';
+  const subtitle = 'Prompt + files required — GPT-5.4 Pro/GPT-5.4 for tough questions with code/file context.';
   return `${colors.banner(`Oracle CLI v${version}`)} ${colors.subtitle(`— ${subtitle}`)}\n`;
 }
 
@@ -91,7 +91,7 @@ function renderHelpFooter(program: Command, colors: HelpColors): string {
       'Build the bundle, print it, and copy it for manual paste into ChatGPT.',
     ),
     formatExample(
-      `${program.name()} --prompt "Cross-check the data layer assumptions" --model gpt-5.2-pro --file "src/**/*.ts"`,
+      `${program.name()} --prompt "Cross-check the data layer assumptions" --model gpt-5.4-pro --file "src/**/*.ts"`,
       'Run browser automation with a single model and strong source context.',
     ),
     formatExample(

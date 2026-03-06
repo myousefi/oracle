@@ -37,7 +37,7 @@ describe('timeouts', () => {
     ).rejects.toBeInstanceOf(OracleTransportError);
   });
 
-  test('gpt-5.2-pro auto timeout allows long background runs', async () => {
+  test('gpt-5.4-pro auto timeout allows long background runs', async () => {
     const finalResponse = buildResponse({ status: 'completed' });
     const initialResponse = { ...finalResponse, status: 'in_progress', output: [] };
     const client = new MockBackgroundClient([initialResponse, finalResponse]);
@@ -47,7 +47,7 @@ describe('timeouts', () => {
     };
 
     await runOracle(
-      { prompt: 'hi', model: 'gpt-5.2-pro', background: true },
+      { prompt: 'hi', model: 'gpt-5.4-pro', background: true },
       { client, log: () => {}, write: () => true, wait, now: () => nowRef.t },
     );
   });
@@ -66,7 +66,7 @@ describe('runOracle preview mode', () => {
     expect(result.mode).toBe('preview');
     if (result.mode === 'preview') {
       expect(result.estimatedInputTokens).toBeGreaterThan(0);
-      expect(result.requestBody.model).toContain('gpt-5.1');
+      expect(result.requestBody.model).toContain('gpt-5.4');
     }
   });
 });
@@ -78,7 +78,7 @@ describe('runOracle error handling', () => {
     try {
       await expect(
         runOracle(
-          { prompt: 'too short', model: 'gpt-5.2-pro' },
+          { prompt: 'too short', model: 'gpt-5.4-pro' },
           { apiKey: 'sk-test', log: () => {}, write: () => true },
         ),
       ).rejects.toBeInstanceOf(PromptValidationError);
@@ -130,7 +130,7 @@ describe('runOracle error handling', () => {
     await runOracle(
       {
         prompt: 'short',
-        model: 'gpt-5.2-pro',
+        model: 'gpt-5.4-pro',
         background: false,
       },
       {

@@ -4,90 +4,138 @@ import type { ModelConfig, ModelName, KnownModelName, ProModelName, TokenizerFn 
 import { countTokens as countTokensAnthropicRaw } from '@anthropic-ai/tokenizer';
 import { stringifyTokenizerInput } from './tokenStringifier.js';
 
-export const DEFAULT_MODEL: ModelName = 'gpt-5.2-pro';
-export const PRO_MODELS = new Set<ProModelName>(['gpt-5.1-pro', 'gpt-5-pro', 'gpt-5.2-pro', 'claude-4.5-sonnet', 'claude-4.1-opus']);
+export const DEFAULT_MODEL: ModelName = 'gpt-5.4-pro';
+export const CURRENT_GPT_MODEL: ModelName = 'gpt-5.4';
+export const CURRENT_GPT_THINKING_MODEL: ModelName = 'gpt-5.4-thinking';
+export const CURRENT_GPT_INSTANT_MODEL: ModelName = 'gpt-5.3-instant';
+export const CURRENT_GPT_PRO_MODEL: ModelName = 'gpt-5.4-pro';
+
+export const PRO_MODELS = new Set<ProModelName>([
+  'gpt-5.4-pro',
+  'gpt-5.1-pro',
+  'gpt-5-pro',
+  'gpt-5.2-pro',
+  'claude-4.5-sonnet',
+  'claude-4.1-opus',
+]);
 
 const countTokensAnthropic: TokenizerFn = (input: unknown): number =>
   countTokensAnthropicRaw(stringifyTokenizerInput(input));
 
+const GPT_INPUT_LIMIT = 196_000;
+const GPT_BASE_PRICING = {
+  inputPerToken: 1.75 / 1_000_000,
+  outputPerToken: 14 / 1_000_000,
+};
+const GPT_PRO_PRICING = {
+  inputPerToken: 21 / 1_000_000,
+  outputPerToken: 168 / 1_000_000,
+};
+
 export const MODEL_CONFIGS: Record<KnownModelName, ModelConfig> = {
-  'gpt-5.1-pro': {
-    model: 'gpt-5.1-pro',
-    apiModel: 'gpt-5.2-pro',
+  'gpt-5.4-pro': {
+    model: 'gpt-5.4-pro',
     provider: 'openai',
     tokenizer: countTokensGpt5Pro as TokenizerFn,
-    inputLimit: 196000,
-    pricing: {
-      inputPerToken: 21 / 1_000_000,
-      outputPerToken: 168 / 1_000_000,
-    },
+    inputLimit: GPT_INPUT_LIMIT,
+    pricing: GPT_PRO_PRICING,
+    reasoning: { effort: 'xhigh' },
+  },
+  'gpt-5.1-pro': {
+    model: 'gpt-5.1-pro',
+    apiModel: 'gpt-5.4-pro',
+    provider: 'openai',
+    tokenizer: countTokensGpt5Pro as TokenizerFn,
+    inputLimit: GPT_INPUT_LIMIT,
+    pricing: GPT_PRO_PRICING,
     reasoning: null,
   },
   'gpt-5-pro': {
     model: 'gpt-5-pro',
+    apiModel: 'gpt-5.4-pro',
     provider: 'openai',
     tokenizer: countTokensGpt5Pro as TokenizerFn,
-    inputLimit: 196000,
-    pricing: {
-      inputPerToken: 15 / 1_000_000,
-      outputPerToken: 120 / 1_000_000,
-    },
+    inputLimit: GPT_INPUT_LIMIT,
+    pricing: GPT_PRO_PRICING,
+    reasoning: null,
+  },
+  'gpt-5.4': {
+    model: 'gpt-5.4',
+    provider: 'openai',
+    tokenizer: countTokensGpt5 as TokenizerFn,
+    inputLimit: GPT_INPUT_LIMIT,
+    pricing: GPT_BASE_PRICING,
+    reasoning: { effort: 'xhigh' },
+  },
+  'gpt-5.4-thinking': {
+    model: 'gpt-5.4-thinking',
+    apiModel: 'gpt-5.4',
+    provider: 'openai',
+    tokenizer: countTokensGpt5 as TokenizerFn,
+    inputLimit: GPT_INPUT_LIMIT,
+    pricing: GPT_BASE_PRICING,
+    reasoning: { effort: 'xhigh' },
+  },
+  'gpt-5.3-instant': {
+    model: 'gpt-5.3-instant',
+    apiModel: 'gpt-5.3-chat-latest',
+    provider: 'openai',
+    tokenizer: countTokensGpt5 as TokenizerFn,
+    inputLimit: GPT_INPUT_LIMIT,
+    pricing: GPT_BASE_PRICING,
     reasoning: null,
   },
   'gpt-5.1': {
     model: 'gpt-5.1',
+    apiModel: 'gpt-5.4',
     provider: 'openai',
     tokenizer: countTokensGpt5 as TokenizerFn,
-    inputLimit: 196000,
-    pricing: {
-      inputPerToken: 1.25 / 1_000_000,
-      outputPerToken: 10 / 1_000_000,
-    },
+    inputLimit: GPT_INPUT_LIMIT,
+    pricing: GPT_BASE_PRICING,
     reasoning: { effort: 'high' },
   },
   'gpt-5.1-codex': {
     model: 'gpt-5.1-codex',
     provider: 'openai',
     tokenizer: countTokensGpt5 as TokenizerFn,
-    inputLimit: 196000,
-    pricing: {
-      inputPerToken: 1.25 / 1_000_000,
-      outputPerToken: 10 / 1_000_000,
-    },
+    inputLimit: GPT_INPUT_LIMIT,
+    pricing: GPT_BASE_PRICING,
     reasoning: { effort: 'high' },
   },
   'gpt-5.2': {
     model: 'gpt-5.2',
+    apiModel: 'gpt-5.4',
     provider: 'openai',
     tokenizer: countTokensGpt5 as TokenizerFn,
-    inputLimit: 196000,
-    pricing: {
-      inputPerToken: 1.75 / 1_000_000,
-      outputPerToken: 14 / 1_000_000,
-    },
+    inputLimit: GPT_INPUT_LIMIT,
+    pricing: GPT_BASE_PRICING,
     reasoning: { effort: 'xhigh' },
   },
   'gpt-5.2-instant': {
     model: 'gpt-5.2-instant',
-    apiModel: 'gpt-5.2-chat-latest',
+    apiModel: 'gpt-5.3-instant',
     provider: 'openai',
     tokenizer: countTokensGpt5 as TokenizerFn,
-    inputLimit: 196000,
-    pricing: {
-      inputPerToken: 1.75 / 1_000_000,
-      outputPerToken: 14 / 1_000_000,
-    },
+    inputLimit: GPT_INPUT_LIMIT,
+    pricing: GPT_BASE_PRICING,
     reasoning: null,
   },
   'gpt-5.2-pro': {
     model: 'gpt-5.2-pro',
+    apiModel: 'gpt-5.4-pro',
     provider: 'openai',
     tokenizer: countTokensGpt5Pro as TokenizerFn,
-    inputLimit: 196000,
-    pricing: {
-      inputPerToken: 21 / 1_000_000,
-      outputPerToken: 168 / 1_000_000,
-    },
+    inputLimit: GPT_INPUT_LIMIT,
+    pricing: GPT_PRO_PRICING,
+    reasoning: { effort: 'xhigh' },
+  },
+  'gpt-5.2-thinking': {
+    model: 'gpt-5.2-thinking',
+    apiModel: 'gpt-5.4',
+    provider: 'openai',
+    tokenizer: countTokensGpt5 as TokenizerFn,
+    inputLimit: GPT_INPUT_LIMIT,
+    pricing: GPT_BASE_PRICING,
     reasoning: { effort: 'xhigh' },
   },
   'gemini-3-pro': {
@@ -131,9 +179,9 @@ export const MODEL_CONFIGS: Record<KnownModelName, ModelConfig> = {
     supportsBackground: false,
     supportsSearch: false,
   },
-  'grok-4.1': {
-    model: 'grok-4.1',
-    apiModel: 'grok-4-1-fast-reasoning',
+  'grok-4.20': {
+    model: 'grok-4.20',
+    apiModel: 'grok-4-20-fast-reasoning',
     provider: 'xai',
     tokenizer: countTokensGpt5Pro as TokenizerFn,
     inputLimit: 2_000_000,

@@ -3,7 +3,14 @@ import { parseDuration } from '../browserMode.js';
 import path from 'node:path';
 import fg from 'fast-glob';
 import type { ModelName, PreviewMode } from '../oracle.js';
-import { DEFAULT_MODEL, MODEL_CONFIGS } from '../oracle.js';
+import {
+  CURRENT_GPT_INSTANT_MODEL,
+  CURRENT_GPT_MODEL,
+  CURRENT_GPT_PRO_MODEL,
+  CURRENT_GPT_THINKING_MODEL,
+  DEFAULT_MODEL,
+  MODEL_CONFIGS,
+} from '../oracle.js';
 
 export function collectPaths(value: string | string[] | undefined, previous: string[] = []): string[] {
   if (!value) {
@@ -178,9 +185,6 @@ export function parseDurationOption(value: string | undefined, label: string): n
 
 export function resolveApiModel(modelValue: string): ModelName {
   const normalized = normalizeModelOption(modelValue).toLowerCase();
-  if (normalized in MODEL_CONFIGS) {
-    return normalized as ModelName;
-  }
   if (normalized.includes('grok')) {
     return 'grok-4.20';
   }
@@ -196,18 +200,6 @@ export function resolveApiModel(modelValue: string): ModelName {
   if (normalized === 'opus' || normalized === 'claude-4.1') {
     return 'claude-4.1-opus';
   }
-  if (normalized.includes('5.0') || normalized === 'gpt-5-pro' || normalized === 'gpt-5') {
-    return 'gpt-5-pro';
-  }
-  if (normalized.includes('5-pro') && !normalized.includes('5.1')) {
-    return 'gpt-5-pro';
-  }
-  if (normalized.includes('5.2') && normalized.includes('pro')) {
-    return 'gpt-5.2-pro';
-  }
-  if (normalized.includes('5.1') && normalized.includes('pro')) {
-    return 'gpt-5.1-pro';
-  }
   if (normalized.includes('codex')) {
     if (normalized.includes('max')) {
       throw new InvalidArgumentError('gpt-5.1-codex-max is not available yet. OpenAI has not released the API.');
@@ -217,8 +209,42 @@ export function resolveApiModel(modelValue: string): ModelName {
   if (normalized.includes('gemini')) {
     return 'gemini-3-pro';
   }
+  if (normalized in MODEL_CONFIGS) {
+    if (normalized === 'gpt-5.1-pro' || normalized === 'gpt-5-pro' || normalized === 'gpt-5.2-pro') {
+      return CURRENT_GPT_PRO_MODEL;
+    }
+    if (normalized === 'gpt-5.1' || normalized === 'gpt-5.2') {
+      return CURRENT_GPT_MODEL;
+    }
+    if (normalized === 'gpt-5.2-thinking') {
+      return CURRENT_GPT_THINKING_MODEL;
+    }
+    if (normalized === 'gpt-5.2-instant') {
+      return CURRENT_GPT_INSTANT_MODEL;
+    }
+    return normalized as ModelName;
+  }
+  if (
+    normalized.includes('5.4') ||
+    normalized.includes('5.2') ||
+    normalized.includes('5.1') ||
+    normalized.includes('5.0') ||
+    normalized === 'gpt-5-pro' ||
+    normalized === 'gpt-5'
+  ) {
+    if (normalized.includes('thinking')) {
+      return CURRENT_GPT_THINKING_MODEL;
+    }
+    if (normalized.includes('instant') || normalized.includes('fast')) {
+      return CURRENT_GPT_INSTANT_MODEL;
+    }
+    if (normalized.includes('pro') || normalized === 'gpt-5') {
+      return CURRENT_GPT_PRO_MODEL;
+    }
+    return CURRENT_GPT_MODEL;
+  }
   if (normalized.includes('pro')) {
-    return 'gpt-5.2-pro';
+    return CURRENT_GPT_PRO_MODEL;
   }
   // Passthrough for custom/OpenRouter model IDs.
   return normalized as ModelName;
@@ -228,9 +254,6 @@ export function inferModelFromLabel(modelValue: string): ModelName {
   const normalized = normalizeModelOption(modelValue).toLowerCase();
   if (!normalized) {
     return DEFAULT_MODEL;
-  }
-  if (normalized in MODEL_CONFIGS) {
-    return normalized as ModelName;
   }
   if (normalized.includes('grok')) {
     return 'grok-4.20';
@@ -247,44 +270,61 @@ export function inferModelFromLabel(modelValue: string): ModelName {
   if (normalized.includes('gemini')) {
     return 'gemini-3-pro';
   }
+  if (normalized in MODEL_CONFIGS) {
+    if (normalized === 'gpt-5.1-pro' || normalized === 'gpt-5-pro' || normalized === 'gpt-5.2-pro') {
+      return CURRENT_GPT_PRO_MODEL;
+    }
+    if (normalized === 'gpt-5.2-thinking') {
+      return CURRENT_GPT_THINKING_MODEL;
+    }
+    if (normalized === 'gpt-5.2-instant') {
+      return CURRENT_GPT_INSTANT_MODEL;
+    }
+    if (normalized === 'gpt-5.1' || normalized === 'gpt-5.2') {
+      return CURRENT_GPT_MODEL;
+    }
+    return normalized as ModelName;
+  }
+  const references54 = normalized.includes('5.4') || normalized.includes('5_4');
+  const references53 = normalized.includes('5.3') || normalized.includes('5_3');
+  const references52 = normalized.includes('5.2') || normalized.includes('5_2');
+  const references51 = normalized.includes('5.1') || normalized.includes('5_1');
+  const references50 = normalized.includes('5.0') || normalized.includes('5_0');
+
   if (normalized.includes('classic')) {
-    return 'gpt-5-pro';
+    return CURRENT_GPT_PRO_MODEL;
   }
-  if ((normalized.includes('5.2') || normalized.includes('5_2')) && normalized.includes('pro')) {
-    return 'gpt-5.2-pro';
-  }
-  // Browser-only: pass through 5.2 thinking/instant variants for browser label mapping
-  if ((normalized.includes('5.2') || normalized.includes('5_2')) && normalized.includes('thinking')) {
-    return 'gpt-5.2-thinking' as ModelName;
-  }
-  if ((normalized.includes('5.2') || normalized.includes('5_2')) && normalized.includes('instant')) {
-    return 'gpt-5.2-instant';
-  }
-  if (normalized.includes('5.0') || normalized.includes('5-pro')) {
-    return 'gpt-5-pro';
-  }
-  if (
-    normalized.includes('gpt-5') &&
-    normalized.includes('pro') &&
-    !normalized.includes('5.1') &&
-    !normalized.includes('5.2')
-  ) {
-    return 'gpt-5-pro';
-  }
-  if ((normalized.includes('5.1') || normalized.includes('5_1')) && normalized.includes('pro')) {
-    return 'gpt-5.1-pro';
-  }
-  if (normalized.includes('pro')) {
-    return 'gpt-5.2-pro';
-  }
-  if (normalized.includes('5.1') || normalized.includes('5_1')) {
-    return 'gpt-5.1';
+  if (references54 || references53 || references52 || references51 || references50 || normalized.includes('gpt-5')) {
+    if (normalized.includes('pro')) {
+      return CURRENT_GPT_PRO_MODEL;
+    }
+    if (references52 && (normalized.includes('instant') || normalized.includes('fast'))) {
+      return CURRENT_GPT_INSTANT_MODEL;
+    }
+    if (references54 && (normalized.includes('instant') || normalized.includes('fast'))) {
+      return CURRENT_GPT_INSTANT_MODEL;
+    }
+    if (references53 && (normalized.includes('instant') || normalized.includes('fast'))) {
+      return CURRENT_GPT_INSTANT_MODEL;
+    }
+    if (references52 && normalized.includes('thinking')) {
+      return CURRENT_GPT_THINKING_MODEL;
+    }
+    if (references54 && normalized.includes('thinking')) {
+      return CURRENT_GPT_THINKING_MODEL;
+    }
+    if (references51 || references50 || references54) {
+      return CURRENT_GPT_MODEL;
+    }
   }
   if (normalized.includes('thinking')) {
-    return 'gpt-5.2-thinking' as ModelName;
+    return CURRENT_GPT_THINKING_MODEL;
   }
   if (normalized.includes('instant') || normalized.includes('fast')) {
-    return 'gpt-5.2-instant';
+    return CURRENT_GPT_INSTANT_MODEL;
   }
-  return 'gpt-5.2';
+  if (normalized.includes('pro')) {
+    return CURRENT_GPT_PRO_MODEL;
+  }
+  return CURRENT_GPT_MODEL;
 }

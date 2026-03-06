@@ -28,10 +28,10 @@ describe('resolveRunOptionsFromConfig', () => {
       prompt: basePrompt,
       userConfig: { model: 'gpt-5.1' },
     });
-    expect(runOptions.model).toBe('gpt-5.2');
+    expect(runOptions.model).toBe('gpt-5.4');
   });
 
-  it('defaults to gpt-5.2-pro when model not provided', () => {
+  it('defaults to gpt-5.4-pro when model not provided', () => {
     const { runOptions } = resolveRunOptionsFromConfig({
       prompt: basePrompt,
     });
@@ -43,7 +43,7 @@ describe('resolveRunOptionsFromConfig', () => {
       prompt: basePrompt,
       model: 'gpt-5.1-pro',
     });
-    expect(runOptions.model).toBe('gpt-5.2-pro');
+    expect(runOptions.model).toBe('gpt-5.4-pro');
   });
 
   it('rejects multi-model lists', () => {

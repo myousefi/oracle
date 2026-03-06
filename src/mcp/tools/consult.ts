@@ -56,7 +56,7 @@ const consultInputShape = {
     .string()
     .optional()
     .describe(
-      'Browser-only: explicit ChatGPT UI label to select (overrides model mapping). Example: "GPT-5.2 Thinking".',
+      'Browser-only: explicit ChatGPT UI label to select (overrides model mapping). Example: "GPT-5.4 Thinking".',
     ),
   browserAttachments: z
     .enum(['auto', 'never', 'always'])

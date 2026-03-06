@@ -51,7 +51,7 @@ export function resolveRunOptionsFromConfig({
   const selectedRawModel =
     normalizedRequestedModels.length === 0 ? cliModelArg : normalizedRequestedModels[0] ?? DEFAULT_MODEL;
   const inferredModel = inferModelFromLabel(selectedRawModel);
-  // Browser engine maps Pro/legacy aliases to the latest ChatGPT picker targets (GPT-5.2 / GPT-5.2 Pro).
+  // Browser engine maps legacy aliases to the live ChatGPT picker targets (GPT-5.4 Thinking / GPT-5.4 Pro / GPT-5.3 Instant).
   const resolvedModel = normalizeChatGptModelForBrowser(inferredModel);
   const isBrowserCompatible = (m: string) =>
     (m.startsWith('gpt-') && !m.includes('codex')) || m.startsWith('gemini') || m.startsWith('grok');

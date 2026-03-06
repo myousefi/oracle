@@ -42,7 +42,7 @@ export async function ensureModelSelection(
       const availableHint = available.length > 0 ? ` Available: ${available.join(', ')}.` : '';
       const tempHint =
         isTemporary && /\bpro\b/i.test(desiredModel)
-          ? ' You are in Temporary Chat mode; Pro models are not available there. Remove "temporary-chat=true" from --chatgpt-url or use a non-Pro model (e.g. gpt-5.2).'
+          ? ' You are in Temporary Chat mode; Pro models are not available there. Remove "temporary-chat=true" from --chatgpt-url or use a non-Pro model (e.g. gpt-5.4).'
           : '';
       throw new Error(`Unable to find model option matching "${desiredModel}" in the model switcher.${availableHint}${tempHint}`);
     }
@@ -92,13 +92,17 @@ function buildModelSelectionExpression(targetModel: string, strategy: BrowserMod
       .map((token) => normalizeText(token))
       .filter(Boolean);
     const targetWords = normalizedTarget.split(' ').filter(Boolean);
-    const desiredVersion = normalizedTarget.includes('5 2')
-      ? '5-2'
-      : normalizedTarget.includes('5 1')
-        ? '5-1'
-        : normalizedTarget.includes('5 0')
-          ? '5-0'
-          : null;
+    const desiredVersion = normalizedTarget.includes('5 4')
+      ? '5-4'
+      : normalizedTarget.includes('5 3')
+        ? '5-3'
+        : normalizedTarget.includes('5 2')
+          ? '5-2'
+          : normalizedTarget.includes('5 1')
+            ? '5-1'
+            : normalizedTarget.includes('5 0')
+              ? '5-0'
+              : null;
     const wantsPro = normalizedTarget.includes(' pro') || normalizedTarget.endsWith(' pro') || normalizedTokens.includes('pro');
     const wantsInstant = normalizedTarget.includes('instant');
     const wantsThinking = normalizedTarget.includes('thinking');
@@ -116,6 +120,8 @@ function buildModelSelectionExpression(targetModel: string, strategy: BrowserMod
       const normalizedLabel = normalizeText(getButtonLabel());
       if (!normalizedLabel) return false;
       if (desiredVersion) {
+        if (desiredVersion === '5-4' && !normalizedLabel.includes('5 4')) return false;
+        if (desiredVersion === '5-3' && !normalizedLabel.includes('5 3')) return false;
         if (desiredVersion === '5-2' && !normalizedLabel.includes('5 2')) return false;
         if (desiredVersion === '5-1' && !normalizedLabel.includes('5 1')) return false;
         if (desiredVersion === '5-0' && !normalizedLabel.includes('5 0')) return false;
@@ -173,7 +179,19 @@ function buildModelSelectionExpression(targetModel: string, strategy: BrowserMod
       const normalizedTestId = (testid ?? '').toLowerCase();
       if (normalizedTestId) {
         if (desiredVersion) {
-          // data-testid strings have been observed with both dotted and dashed versions (e.g. gpt-5.2-pro vs gpt-5-2-pro).
+          // data-testid strings have been observed with both dotted and dashed versions (e.g. gpt-5.4-pro vs gpt-5-4-pro).
+          const has54 =
+            normalizedTestId.includes('5-4') ||
+            normalizedTestId.includes('5.4') ||
+            normalizedTestId.includes('gpt-5-4') ||
+            normalizedTestId.includes('gpt-5.4') ||
+            normalizedTestId.includes('gpt54');
+          const has53 =
+            normalizedTestId.includes('5-3') ||
+            normalizedTestId.includes('5.3') ||
+            normalizedTestId.includes('gpt-5-3') ||
+            normalizedTestId.includes('gpt-5.3') ||
+            normalizedTestId.includes('gpt53');
           const has52 =
             normalizedTestId.includes('5-2') ||
             normalizedTestId.includes('5.2') ||
@@ -192,7 +210,17 @@ function buildModelSelectionExpression(targetModel: string, strategy: BrowserMod
             normalizedTestId.includes('gpt-5-0') ||
             normalizedTestId.includes('gpt-5.0') ||
             normalizedTestId.includes('gpt50');
-          const candidateVersion = has52 ? '5-2' : has51 ? '5-1' : has50 ? '5-0' : null;
+          const candidateVersion = has54
+            ? '5-4'
+            : has53
+              ? '5-3'
+              : has52
+                ? '5-2'
+                : has51
+                  ? '5-1'
+                  : has50
+                    ? '5-0'
+                    : null;
           // If a candidate advertises a different version, ignore it entirely.
           if (candidateVersion && candidateVersion !== desiredVersion) {
             return 0;
@@ -399,73 +427,95 @@ function buildModelMatchersLiteral(targetModel: string): { labelTokens: string[]
   push(`chatgpt ${dotless}`, labelTokens);
   push(`gpt ${base}`, labelTokens);
   push(`gpt ${dotless}`, labelTokens);
-  // Numeric variations (5.1 ↔ 51 ↔ gpt-5-1)
-  if (base.includes('5.1') || base.includes('5-1') || base.includes('51')) {
-    push('5.1', labelTokens);
-    push('gpt-5.1', labelTokens);
-    push('gpt5.1', labelTokens);
-    push('gpt-5-1', labelTokens);
-    push('gpt5-1', labelTokens);
-    push('gpt51', labelTokens);
-    push('chatgpt 5.1', labelTokens);
-    testIdTokens.add('gpt-5-1');
-    testIdTokens.add('gpt5-1');
-    testIdTokens.add('gpt51');
+  const hasVersion = (dotted: string, dashed: string, compactNum: string) =>
+    base.includes(dotted) || base.includes(dashed) || base.includes(compactNum);
+  const addVersionTokens = (dotted: string, dashed: string, compactNum: string) => {
+    push(dotted, labelTokens);
+    push(`gpt-${dotted}`, labelTokens);
+    push(`gpt${dotted}`, labelTokens);
+    push(`gpt-${dashed}`, labelTokens);
+    push(`gpt${dashed}`, labelTokens);
+    push(`gpt${compactNum}`, labelTokens);
+    push(`chatgpt ${dotted}`, labelTokens);
+    testIdTokens.add(`gpt-${dashed}`);
+    testIdTokens.add(`gpt${dashed}`);
+    testIdTokens.add(`gpt${compactNum}`);
+  };
+
+  if (hasVersion('5.4', '5-4', '54')) {
+    addVersionTokens('5.4', '5-4', '54');
+    if (base.includes('thinking')) {
+      push('thinking', labelTokens);
+      testIdTokens.add('model-switcher-gpt-5-4-thinking');
+      testIdTokens.add('gpt-5-4-thinking');
+      testIdTokens.add('gpt-5.4-thinking');
+    }
+    if (base.includes('pro')) {
+      testIdTokens.add('model-switcher-gpt-5-4-pro');
+      testIdTokens.add('gpt-5-4-pro');
+      testIdTokens.add('gpt-5.4-pro');
+      testIdTokens.add('gpt54pro');
+    }
   }
-  // Numeric variations (5.0 ↔ 50 ↔ gpt-5-0)
-  if (base.includes('5.0') || base.includes('5-0') || base.includes('50')) {
-    push('5.0', labelTokens);
-    push('gpt-5.0', labelTokens);
-    push('gpt5.0', labelTokens);
-    push('gpt-5-0', labelTokens);
-    push('gpt5-0', labelTokens);
-    push('gpt50', labelTokens);
-    push('chatgpt 5.0', labelTokens);
-    testIdTokens.add('gpt-5-0');
-    testIdTokens.add('gpt5-0');
-    testIdTokens.add('gpt50');
+  if (hasVersion('5.3', '5-3', '53')) {
+    addVersionTokens('5.3', '5-3', '53');
+    if (base.includes('instant')) {
+      push('instant', labelTokens);
+      testIdTokens.add('model-switcher-gpt-5-3-instant');
+      testIdTokens.add('gpt-5-3-instant');
+      testIdTokens.add('gpt-5.3-instant');
+    }
+    if (!base.includes('thinking') && !base.includes('instant') && !base.includes('pro')) {
+      testIdTokens.add('model-switcher-gpt-5-3');
+    }
   }
-  // Numeric variations (5.2 ↔ 52 ↔ gpt-5-2)
-  if (base.includes('5.2') || base.includes('5-2') || base.includes('52')) {
-    push('5.2', labelTokens);
-    push('gpt-5.2', labelTokens);
-    push('gpt5.2', labelTokens);
-    push('gpt-5-2', labelTokens);
-    push('gpt5-2', labelTokens);
-    push('gpt52', labelTokens);
-    push('chatgpt 5.2', labelTokens);
-    // Thinking variant: explicit testid for "Thinking" picker option
+  if (hasVersion('5.2', '5-2', '52')) {
+    addVersionTokens('5.2', '5-2', '52');
     if (base.includes('thinking')) {
       push('thinking', labelTokens);
       testIdTokens.add('model-switcher-gpt-5-2-thinking');
       testIdTokens.add('gpt-5-2-thinking');
       testIdTokens.add('gpt-5.2-thinking');
     }
-    // Instant variant: explicit testid for "Instant" picker option
     if (base.includes('instant')) {
       push('instant', labelTokens);
       testIdTokens.add('model-switcher-gpt-5-2-instant');
       testIdTokens.add('gpt-5-2-instant');
       testIdTokens.add('gpt-5.2-instant');
     }
-    // Base 5.2 testids (for "Auto" mode when no suffix specified)
     if (!base.includes('thinking') && !base.includes('instant') && !base.includes('pro')) {
       testIdTokens.add('model-switcher-gpt-5-2');
     }
-    testIdTokens.add('gpt-5-2');
-    testIdTokens.add('gpt5-2');
-    testIdTokens.add('gpt52');
+  }
+  if (hasVersion('5.1', '5-1', '51')) {
+    addVersionTokens('5.1', '5-1', '51');
+    if (base.includes('thinking')) {
+      push('thinking', labelTokens);
+      testIdTokens.add('model-switcher-gpt-5-1-thinking');
+      testIdTokens.add('gpt-5-1-thinking');
+      testIdTokens.add('gpt-5.1-thinking');
+    }
+    if (base.includes('instant')) {
+      push('instant', labelTokens);
+      testIdTokens.add('model-switcher-gpt-5-1-instant');
+      testIdTokens.add('gpt-5-1-instant');
+      testIdTokens.add('gpt-5.1-instant');
+    }
+    if (base.includes('pro')) {
+      testIdTokens.add('model-switcher-gpt-5-1-pro');
+      testIdTokens.add('gpt-5-1-pro');
+      testIdTokens.add('gpt-5.1-pro');
+      testIdTokens.add('gpt51pro');
+    }
+  }
+  if (hasVersion('5.0', '5-0', '50')) {
+    addVersionTokens('5.0', '5-0', '50');
   }
   // Pro / research variants
   if (base.includes('pro')) {
     push('proresearch', labelTokens);
     push('research grade', labelTokens);
     push('advanced reasoning', labelTokens);
-    if (base.includes('5.1') || base.includes('5-1') || base.includes('51')) {
-      testIdTokens.add('gpt-5.1-pro');
-      testIdTokens.add('gpt-5-1-pro');
-      testIdTokens.add('gpt51pro');
-    }
     if (base.includes('5.0') || base.includes('5-0') || base.includes('50')) {
       testIdTokens.add('gpt-5.0-pro');
       testIdTokens.add('gpt-5-0-pro');
@@ -491,7 +541,7 @@ function buildModelMatchersLiteral(targetModel: string): { labelTokens: string[]
   push(hyphenated, testIdTokens);
   push(collapsed, testIdTokens);
   push(dotless, testIdTokens);
-  // data-testid values observed in the ChatGPT picker (e.g., model-switcher-gpt-5.1-pro)
+  // data-testid values observed in the ChatGPT picker (e.g., model-switcher-gpt-5-4-pro)
   push(`model-switcher-${hyphenated}`, testIdTokens);
   push(`model-switcher-${collapsed}`, testIdTokens);
   push(`model-switcher-${dotless}`, testIdTokens);

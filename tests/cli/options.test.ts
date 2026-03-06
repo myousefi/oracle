@@ -152,17 +152,19 @@ describe('parseSearchOption', () => {
 
 describe('normalizeModelOption', () => {
   test('trims whitespace safely', () => {
-    expect(normalizeModelOption('  gpt-5.2-pro  ')).toBe('gpt-5.2-pro');
+    expect(normalizeModelOption('  gpt-5.4-pro  ')).toBe('gpt-5.4-pro');
     expect(normalizeModelOption(undefined)).toBe('');
   });
 });
 
 describe('resolveApiModel', () => {
   test('accepts canonical names regardless of case', () => {
-    expect(resolveApiModel('gpt-5.2-pro')).toBe('gpt-5.2-pro');
-    expect(resolveApiModel('GPT-5.0-PRO')).toBe('gpt-5-pro');
-    expect(resolveApiModel('gpt-5-pro')).toBe('gpt-5-pro');
-    expect(resolveApiModel('GPT-5.1')).toBe('gpt-5.1');
+    expect(resolveApiModel('gpt-5.4-pro')).toBe('gpt-5.4-pro');
+    expect(resolveApiModel('GPT-5.2-PRO')).toBe('gpt-5.4-pro');
+    expect(resolveApiModel('GPT-5.0-PRO')).toBe('gpt-5.4-pro');
+    expect(resolveApiModel('gpt-5-pro')).toBe('gpt-5.4-pro');
+    expect(resolveApiModel('GPT-5.1')).toBe('gpt-5.4');
+    expect(resolveApiModel('GPT-5.2')).toBe('gpt-5.4');
     expect(resolveApiModel('GPT-5.1-CODEX')).toBe('gpt-5.1-codex');
     expect(resolveApiModel('claude-4.5-sonnet')).toBe('claude-4.5-sonnet');
     expect(resolveApiModel('Claude Opus 4.1')).toBe('claude-4.1-opus');
@@ -170,8 +172,8 @@ describe('resolveApiModel', () => {
     expect(resolveApiModel('opus')).toBe('claude-4.1-opus');
     expect(resolveApiModel('CLAUDE')).toBe('claude-4.5-sonnet');
     expect(resolveApiModel('Gemini')).toBe('gemini-3-pro');
-    expect(resolveApiModel('grok')).toBe('grok-4.1');
-    expect(resolveApiModel('Grok 4.1')).toBe('grok-4.1');
+    expect(resolveApiModel('grok')).toBe('grok-4.20');
+    expect(resolveApiModel('Grok 4.1')).toBe('grok-4.20');
   });
 
   test('rejects codex max until API is available', () => {
@@ -185,22 +187,22 @@ describe('resolveApiModel', () => {
 
 describe('inferModelFromLabel', () => {
   test('returns canonical names when label already matches', () => {
-    expect(inferModelFromLabel('gpt-5.2-pro')).toBe('gpt-5.2-pro');
-    expect(inferModelFromLabel('gpt-5-pro')).toBe('gpt-5-pro');
-    expect(inferModelFromLabel('gpt-5.1')).toBe('gpt-5.1');
+    expect(inferModelFromLabel('gpt-5.4-pro')).toBe('gpt-5.4-pro');
+    expect(inferModelFromLabel('gpt-5-pro')).toBe('gpt-5.4-pro');
+    expect(inferModelFromLabel('gpt-5.4')).toBe('gpt-5.4');
     expect(inferModelFromLabel('gpt-5.1-codex')).toBe('gpt-5.1-codex');
   });
 
-  test('infers 5.1 variants as gpt-5.1', () => {
-    expect(inferModelFromLabel('ChatGPT 5.1 Instant')).toBe('gpt-5.1');
-    expect(inferModelFromLabel('5.1 thinking')).toBe('gpt-5.1');
-    expect(inferModelFromLabel(' 5.1 FAST ')).toBe('gpt-5.1');
+  test('infers legacy 5.1 variants as current GPT-5.4', () => {
+    expect(inferModelFromLabel('ChatGPT 5.1 Instant')).toBe('gpt-5.4');
+    expect(inferModelFromLabel('5.1 thinking')).toBe('gpt-5.4');
+    expect(inferModelFromLabel(' 5.1 FAST ')).toBe('gpt-5.4');
   });
 
-  test('infers 5.2 thinking/instant variants', () => {
-    expect(inferModelFromLabel('ChatGPT 5.2 Instant')).toBe('gpt-5.2-instant');
-    expect(inferModelFromLabel('5.2 thinking')).toBe('gpt-5.2-thinking');
-    expect(inferModelFromLabel('5_2 FAST')).toBe('gpt-5.2-instant');
+  test('infers legacy 5.2 variants into current GPT-5.4-era models', () => {
+    expect(inferModelFromLabel('ChatGPT 5.2 Instant')).toBe('gpt-5.3-instant');
+    expect(inferModelFromLabel('5.2 thinking')).toBe('gpt-5.4-thinking');
+    expect(inferModelFromLabel('5_2 FAST')).toBe('gpt-5.3-instant');
   });
 
   test('infers Codex labels', () => {
@@ -209,9 +211,10 @@ describe('inferModelFromLabel', () => {
   });
 
   test('falls back to pro when the label references pro', () => {
-    expect(inferModelFromLabel('ChatGPT Pro')).toBe('gpt-5.2-pro');
-    expect(inferModelFromLabel('GPT-5.2 Pro')).toBe('gpt-5.2-pro');
-    expect(inferModelFromLabel('GPT-5 Pro (Classic)')).toBe('gpt-5-pro');
+    expect(inferModelFromLabel('ChatGPT Pro')).toBe('gpt-5.4-pro');
+    expect(inferModelFromLabel('GPT-5.2 Pro')).toBe('gpt-5.4-pro');
+    expect(inferModelFromLabel('GPT-5.4 Pro')).toBe('gpt-5.4-pro');
+    expect(inferModelFromLabel('GPT-5 Pro (Classic)')).toBe('gpt-5.4-pro');
   });
 
   test('infers Claude family labels', () => {
@@ -220,13 +223,13 @@ describe('inferModelFromLabel', () => {
   });
 
   test('infers Grok aliases', () => {
-    expect(inferModelFromLabel('grok')).toBe('grok-4.1');
-    expect(inferModelFromLabel('Grok 4.1')).toBe('grok-4.1');
-    expect(inferModelFromLabel('Grok-4-1')).toBe('grok-4.1');
+    expect(inferModelFromLabel('grok')).toBe('grok-4.20');
+    expect(inferModelFromLabel('Grok 4.1')).toBe('grok-4.20');
+    expect(inferModelFromLabel('Grok-4-1')).toBe('grok-4.20');
   });
 
-  test('falls back to gpt-5.2-pro when label empty and to gpt-5.2 for other ambiguous strings', () => {
-    expect(inferModelFromLabel('')).toBe('gpt-5.2-pro');
-    expect(inferModelFromLabel('something else')).toBe('gpt-5.2');
+  test('falls back to gpt-5.4-pro when label empty and to gpt-5.4 for other ambiguous strings', () => {
+    expect(inferModelFromLabel('')).toBe('gpt-5.4-pro');
+    expect(inferModelFromLabel('something else')).toBe('gpt-5.4');
   });
 });

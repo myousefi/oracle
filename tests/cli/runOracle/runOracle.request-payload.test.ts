@@ -4,7 +4,7 @@ import { runOracle } from '@src/oracle.ts';
 import { MockClient, MockStream, buildResponse } from './helpers.ts';
 
 describe('runOracle request payload', () => {
-  test('maps gpt-5.1-pro alias to gpt-5.2-pro API model', async () => {
+  test('maps gpt-5.1-pro alias to gpt-5.4-pro API model', async () => {
     const stream = new MockStream([], buildResponse());
     const client = new MockClient(stream);
     const logs: string[] = [];
@@ -20,10 +20,10 @@ describe('runOracle request payload', () => {
         log: (msg: string) => logs.push(msg),
       },
     );
-    expect(client.lastRequest?.model).toBe('gpt-5.2-pro');
-    expect(logs.join('\n')).toContain('(API: gpt-5.2-pro)');
+    expect(client.lastRequest?.model).toBe('gpt-5.4-pro');
+    expect(logs.join('\n')).toContain('(API: gpt-5.4-pro)');
     expect(logs.join('\n')).toContain('gpt-5.1-pro');
-    expect(logs.join('\n')).toContain('OpenAI API uses `gpt-5.2-pro`');
+    expect(logs.join('\n')).toContain('OpenAI API uses `gpt-5.4-pro`');
   });
 
   test('search enabled by default', async () => {
@@ -32,7 +32,7 @@ describe('runOracle request payload', () => {
     await runOracle(
       {
         prompt: 'Default search',
-        model: 'gpt-5.2-pro',
+        model: 'gpt-5.4-pro',
         background: false,
       },
       {
@@ -51,7 +51,7 @@ describe('runOracle request payload', () => {
     await runOracle(
       {
         prompt: 'Custom endpoint',
-        model: 'gpt-5.2-pro',
+        model: 'gpt-5.4-pro',
         baseUrl: 'https://litellm.test/v1',
         background: false,
       },
@@ -81,7 +81,7 @@ describe('runOracle request payload', () => {
     await runOracle(
       {
         prompt: 'Azure test',
-        model: 'gpt-5.2-pro',
+        model: 'gpt-5.4-pro',
         azure: azureOptions,
         background: false,
       },
@@ -104,7 +104,7 @@ describe('runOracle request payload', () => {
     await runOracle(
       {
         prompt: 'Search capability',
-        model: 'grok-4.1',
+        model: 'grok-4.20',
         background: false,
       },
       {
@@ -128,7 +128,7 @@ describe('runOracle request payload', () => {
     await runOracle(
       {
         prompt: 'Please run in foreground',
-        model: 'grok-4.1',
+        model: 'grok-4.20',
         background: true,
       },
       {
