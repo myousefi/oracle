@@ -640,8 +640,20 @@ describe('performSessionRun', () => {
     vi.mocked(runBrowserSessionExecution).mockResolvedValue({
       usage: { inputTokens: 100, outputTokens: 50, reasoningTokens: 0, totalTokens: 150 },
       elapsedMs: 2000,
-      runtime: { chromePid: 123, chromePort: 9222, userDataDir: '/tmp/profile' },
+      runtime: {
+        chromePid: 123,
+        chromePort: 9222,
+        userDataDir: '/tmp/profile',
+        tabUrl: 'https://chatgpt.com/c/chapter-1',
+        conversationId: 'chapter-1',
+      },
       answerText: 'Answer',
+      response: {
+        messageId: 'message-1',
+        turnId: 'assistant-turn-1',
+        tabUrl: 'https://chatgpt.com/c/chapter-1',
+        conversationId: 'chapter-1',
+      },
     });
 
     await performSessionRun({
@@ -661,6 +673,12 @@ describe('performSessionRun', () => {
     expect(finalUpdate).toMatchObject({
       status: 'completed',
       browser: expect.objectContaining({ runtime: expect.objectContaining({ chromePid: 123 }) }),
+      response: expect.objectContaining({
+        status: 'completed',
+        messageId: 'message-1',
+        turnId: 'assistant-turn-1',
+        conversationId: 'chapter-1',
+      }),
     });
 	    expect(sessionStoreMock.updateModelRun).toHaveBeenCalledWith(
 	      baseSessionMeta.id,

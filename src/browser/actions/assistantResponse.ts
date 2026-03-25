@@ -767,14 +767,41 @@ function buildAssistantExtractor(functionName: string): string {
       }
       const messageRoot = turn.querySelector(ASSISTANT_SELECTOR) ?? turn;
       expandCollapsibles(messageRoot);
-      const preferred =
-        (messageRoot.matches?.('.markdown') || messageRoot.matches?.('[data-message-content]') ? messageRoot : null) ||
-        messageRoot.querySelector('.markdown') ||
-        messageRoot.querySelector('[data-message-content]') ||
-        messageRoot.querySelector('[data-testid*="message"]') ||
-        messageRoot.querySelector('[data-testid*="assistant"]') ||
-        messageRoot.querySelector('.prose') ||
-        messageRoot.querySelector('[class*="markdown"]');
+      const selectors = [
+        '.markdown',
+        '[data-message-content]',
+        '[data-testid*="message"]',
+        '[data-testid*="assistant"]',
+        '.prose',
+        '[class*="markdown"]',
+      ];
+      const candidateRoots = [];
+      if (messageRoot.matches?.('.markdown') || messageRoot.matches?.('[data-message-content]')) {
+        candidateRoots.push(messageRoot);
+      }
+      for (const selector of selectors) {
+        for (const node of messageRoot.querySelectorAll(selector)) {
+          candidateRoots.push(node);
+        }
+      }
+      const seenRoots = new Set();
+      let preferred = null;
+      let preferredScore = -1;
+      for (const node of candidateRoots) {
+        if (!(node instanceof HTMLElement) || seenRoots.has(node)) {
+          continue;
+        }
+        seenRoots.add(node);
+        const candidateText = ((node.innerText || node.textContent || '') + '').trim();
+        if (!candidateText) {
+          continue;
+        }
+        const score = candidateText.length;
+        if (score >= preferredScore) {
+          preferred = node;
+          preferredScore = score;
+        }
+      }
       const contentRoot = preferred ?? messageRoot;
       if (!contentRoot) {
         continue;
@@ -784,7 +811,7 @@ function buildAssistantExtractor(functionName: string): string {
       const text = innerText.trim().length > 0 ? innerText : textContent;
       const html = contentRoot?.innerHTML ?? '';
       const messageId = messageRoot.getAttribute('data-message-id');
-      const turnId = messageRoot.getAttribute('data-testid');
+      const turnId = messageRoot.getAttribute('data-testid') || turn.getAttribute('data-testid');
       if (text.trim()) {
         return { text, html, messageId, turnId, turnIndex: index };
       }
@@ -937,7 +964,11 @@ function buildCopyExpression(meta: { messageId?: string | null; turnId?: string 
       const hint = ${JSON.stringify(meta ?? {})};
       if (hint?.messageId) {
         const node = document.querySelector('[data-message-id="' + hint.messageId + '"]');
-        const buttons = node ? Array.from(node.querySelectorAll('${COPY_BUTTON_SELECTOR}')) : [];
+        const container =
+          node?.closest?.(${JSON.stringify(CONVERSATION_TURN_SELECTOR)}) ||
+          node?.closest?.('article') ||
+          node;
+        const buttons = container ? Array.from(container.querySelectorAll('${COPY_BUTTON_SELECTOR}')) : [];
         const button = buttons.at(-1) ?? null;
         if (button) {
           return button;

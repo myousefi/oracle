@@ -312,8 +312,364 @@ export async function readConversationTurnIndex(
   }
 }
 
+export async function readConversationLocation(
+  Runtime: ChromeClient['Runtime'],
+): Promise<{ tabUrl?: string; conversationId?: string }> {
+  try {
+    const { result } = await Runtime.evaluate({ expression: 'location.href', returnByValue: true });
+    const tabUrl = typeof result?.value === 'string' ? result.value : undefined;
+    return {
+      tabUrl,
+      conversationId: extractConversationIdFromUrl(tabUrl ?? ''),
+    };
+  } catch {
+    return {};
+  }
+}
+
+export async function recoverAssistantTurnFromConversation(
+  Runtime: ChromeClient['Runtime'],
+  options: {
+    messageId?: string | null;
+    turnId?: string | null;
+    promptText?: string | null;
+    promptPreview?: string | null;
+  },
+): Promise<AssistantPayload | null> {
+  const expression = buildConversationRecoveryExpression({
+    messageId: options.messageId ?? undefined,
+    turnId: options.turnId ?? undefined,
+    promptNeedles: buildPromptRecoveryNeedles(options.promptText, options.promptPreview),
+  });
+  try {
+    const { result } = await Runtime.evaluate({ expression, returnByValue: true });
+    const value = result?.value;
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+    const payload = value as { text?: unknown; html?: unknown; messageId?: unknown; turnId?: unknown };
+    const text = typeof payload.text === 'string' ? payload.text.trim() : '';
+    if (!text) {
+      return null;
+    }
+    return {
+      text,
+      html: typeof payload.html === 'string' ? payload.html : undefined,
+      meta: {
+        messageId: typeof payload.messageId === 'string' ? payload.messageId : undefined,
+        turnId: typeof payload.turnId === 'string' ? payload.turnId : undefined,
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function waitForRecoveredAssistantTurn(
+  Runtime: ChromeClient['Runtime'],
+  options: {
+    messageId?: string | null;
+    turnId?: string | null;
+    promptText?: string | null;
+    promptPreview?: string | null;
+  },
+  timeoutMs: number,
+): Promise<AssistantPayload | null> {
+  const hasLocator = Boolean(
+    options.turnId ||
+    options.messageId ||
+    (options.promptText && options.promptText.trim()) ||
+    (options.promptPreview && options.promptPreview.trim()),
+  );
+  if (!hasLocator) {
+    return null;
+  }
+  const deadline = Date.now() + Math.max(0, timeoutMs);
+  while (Date.now() < deadline) {
+    const recovered = await recoverAssistantTurnFromConversation(Runtime, options);
+    if (recovered) {
+      return recovered;
+    }
+    await delay(300);
+  }
+  return null;
+}
+
 function normalizeForComparison(text: string): string {
   return String(text || '').toLowerCase().replace(/\\s+/g, ' ').trim();
+}
+
+function normalizePromptMatchText(text: string): string {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\\s+/g, ' ')
+    .trim();
+}
+
+function buildPromptRecoveryNeedles(promptText?: string | null, promptPreview?: string | null): string[] {
+  const needles: string[] = [];
+  const addNeedle = (value: string | null | undefined, maxLength = 420) => {
+    const normalized = normalizePromptMatchText(value ?? '');
+    if (!normalized) return;
+    const trimmed = normalized.length > maxLength ? normalized.slice(-maxLength) : normalized;
+    if (trimmed.length < 24) return;
+    if (!needles.includes(trimmed)) {
+      needles.push(trimmed);
+    }
+  };
+
+  const rawPrompt = String(promptText ?? '');
+  const lines = rawPrompt
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  let nowWriteIndex = -1;
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    if (/^now write\b/i.test(lines[index] ?? '')) {
+      nowWriteIndex = index;
+      break;
+    }
+  }
+  if (nowWriteIndex >= 0) {
+    addNeedle(lines[nowWriteIndex], 220);
+    addNeedle(lines.slice(nowWriteIndex, Math.min(lines.length, nowWriteIndex + 8)).join(' '), 420);
+  }
+  if (lines.length > 0) {
+    addNeedle(lines[lines.length - 1], 220);
+    addNeedle(lines.slice(Math.max(0, lines.length - 8)).join(' '), 420);
+  }
+
+  const normalizedPrompt = normalizePromptMatchText(rawPrompt);
+  if (normalizedPrompt) {
+    addNeedle(normalizedPrompt.slice(-420), 420);
+    addNeedle(normalizedPrompt.slice(-240), 240);
+    addNeedle(normalizedPrompt.slice(-120), 120);
+  }
+  addNeedle(promptPreview, 160);
+
+  return needles.slice(0, 6);
+}
+
+function buildConversationRecoveryExpression(options: {
+  messageId?: string;
+  turnId?: string;
+  promptNeedles: string[];
+}): string {
+  const conversationLiteral = JSON.stringify(CONVERSATION_TURN_SELECTOR);
+  return `(() => {
+    const hint = ${JSON.stringify(options)};
+    const CONVERSATION_SELECTOR = ${conversationLiteral};
+    const normalize = (value) =>
+      String(value || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .replace(/\\s+/g, ' ')
+        .trim();
+    const labelText = (node) => {
+      if (!(node instanceof HTMLElement)) return '';
+      const heading = node.querySelector('h5, h6, [role="heading"]');
+      return normalize(heading?.innerText || heading?.textContent || '');
+    };
+    const isUserTurn = (node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      const turnAttr = (node.getAttribute('data-turn') || node.dataset?.turn || '').toLowerCase();
+      if (turnAttr === 'user') return true;
+      const role = (node.getAttribute('data-message-author-role') || node.dataset?.messageAuthorRole || '').toLowerCase();
+      if (role === 'user') return true;
+      const testId = (node.getAttribute('data-testid') || '').toLowerCase();
+      if (testId.includes('user')) return true;
+      return labelText(node).includes('you said');
+    };
+    const isAssistantTurn = (node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      const turnAttr = (node.getAttribute('data-turn') || node.dataset?.turn || '').toLowerCase();
+      if (turnAttr === 'assistant') return true;
+      const role = (node.getAttribute('data-message-author-role') || node.dataset?.messageAuthorRole || '').toLowerCase();
+      if (role === 'assistant') return true;
+      const testId = (node.getAttribute('data-testid') || '').toLowerCase();
+      if (testId.includes('assistant')) return true;
+      return labelText(node).includes('chatgpt said');
+    };
+    const conversationRoot = document.querySelector('main') || document.body || document;
+    const compareDomOrder = (left, right) => {
+      if (left === right) return 0;
+      const relation = left.compareDocumentPosition(right);
+      if (relation & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+      if (relation & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+      return 0;
+    };
+    const conversationTurns = Array.from(
+      new Set(
+        [
+          ...Array.from(document.querySelectorAll(CONVERSATION_SELECTOR)),
+          ...Array.from(conversationRoot.querySelectorAll('article')),
+        ]
+          .map((node) => node?.closest?.(CONVERSATION_SELECTOR) || node?.closest?.('article') || node)
+          .filter((node) => node instanceof HTMLElement),
+      ),
+    ).sort(compareDomOrder);
+    const resolveTurnIndex = (node) => {
+      const turn = node?.closest?.(CONVERSATION_SELECTOR);
+      if (!turn) return null;
+      const idx = conversationTurns.indexOf(turn);
+      return idx >= 0 ? idx : null;
+    };
+    const toMessageRoot = (node, role) => {
+      if (!(node instanceof HTMLElement)) return null;
+      const selector =
+        role === 'assistant'
+          ? '[data-message-author-role="assistant"], [data-turn="assistant"], [data-testid*="assistant"]'
+          : '[data-message-author-role="user"], [data-turn="user"], [data-testid*="user"]';
+      const scopedContent =
+        node.querySelector(selector) ||
+        node.querySelector('div[class*="text-base"], [data-message-content], .markdown, .prose') ||
+        (node.matches?.(selector) ? node : node);
+      return scopedContent;
+    };
+    const extractAssistantPayload = (node, fallbackTurnIndex = null) => {
+      const messageRoot = toMessageRoot(node, 'assistant');
+      if (!(messageRoot instanceof HTMLElement)) return null;
+      const turnRoot =
+        node?.closest?.(CONVERSATION_SELECTOR) ||
+        messageRoot.closest?.(CONVERSATION_SELECTOR) ||
+        node?.closest?.('article') ||
+        messageRoot.closest?.('article') ||
+        node;
+      const selectors = [
+        '.markdown',
+        '[data-message-content]',
+        '[data-testid*="message"]',
+        '[data-testid*="assistant"]',
+        '.prose',
+        '[class*="markdown"]',
+      ];
+      const candidateRoots = [];
+      if (messageRoot.matches?.('.markdown') || messageRoot.matches?.('[data-message-content]')) {
+        candidateRoots.push(messageRoot);
+      }
+      for (const selector of selectors) {
+        for (const candidate of messageRoot.querySelectorAll(selector)) {
+          candidateRoots.push(candidate);
+        }
+      }
+      const seenRoots = new Set();
+      let preferred = null;
+      let preferredScore = -1;
+      for (const candidate of candidateRoots) {
+        if (!(candidate instanceof HTMLElement) || seenRoots.has(candidate)) continue;
+        seenRoots.add(candidate);
+        const candidateText = ((candidate.innerText || candidate.textContent || '') + '').trim();
+        if (!candidateText) continue;
+        const score = candidateText.length;
+        if (score >= preferredScore) {
+          preferred = candidate;
+          preferredScore = score;
+        }
+      }
+      const contentRoot = preferred || messageRoot;
+      const text = ((contentRoot.innerText || contentRoot.textContent || '') + '').trim();
+      if (!text) return null;
+      return {
+        text,
+        html: contentRoot.innerHTML || '',
+        messageId: messageRoot.getAttribute('data-message-id'),
+        turnId: messageRoot.getAttribute('data-testid') || turnRoot?.getAttribute?.('data-testid') || null,
+        turnIndex: fallbackTurnIndex ?? resolveTurnIndex(messageRoot),
+      };
+    };
+
+    if (hint?.messageId || hint?.turnId) {
+      const exactNode =
+        (hint.messageId ? document.querySelector('[data-message-id="' + hint.messageId + '"]') : null) ||
+        (hint.turnId ? document.querySelector('[data-testid="' + hint.turnId + '"]') : null);
+      if (exactNode) {
+        const exactPayload = extractAssistantPayload(exactNode, resolveTurnIndex(exactNode));
+        if (exactPayload) {
+          return exactPayload;
+        }
+      }
+    }
+
+    const needles = Array.isArray(hint?.promptNeedles) ? hint.promptNeedles.map((needle) => normalize(needle)).filter(Boolean) : [];
+    if (needles.length === 0 || conversationTurns.length === 0) {
+      return null;
+    }
+    const chapterNeedles = needles.filter((needle) => needle.includes('now write chapter'));
+    const requireChapterNeedle = chapterNeedles.length > 0;
+
+    let bestUserIndex = -1;
+    let bestStrongMatches = -1;
+    let bestMatchCount = -1;
+    let bestScore = -1;
+    for (let index = 0; index < conversationTurns.length; index += 1) {
+      const turn = conversationTurns[index];
+      if (!isUserTurn(turn)) continue;
+      const userRoot = toMessageRoot(turn, 'user');
+      const normalizedText = normalize(userRoot?.innerText || userRoot?.textContent || '');
+      if (!normalizedText) continue;
+      let score = 0;
+      let matchCount = 0;
+      let strongMatches = 0;
+      for (const needle of needles) {
+        if (!needle) continue;
+        let matchedLength = 0;
+        if (normalizedText.includes(needle)) {
+          matchedLength = needle.length;
+        } else {
+          const shortNeedle = needle.slice(0, Math.min(160, needle.length));
+          if (shortNeedle.length >= 32 && normalizedText.includes(shortNeedle)) {
+            matchedLength = shortNeedle.length;
+          }
+        }
+        if (matchedLength <= 0) {
+          continue;
+        }
+        score += matchedLength;
+        matchCount += 1;
+        if (chapterNeedles.includes(needle) && normalizedText.includes(needle)) {
+          strongMatches += 1;
+        }
+      }
+      if (requireChapterNeedle && strongMatches > 0) {
+        bestUserIndex = index;
+        bestStrongMatches = strongMatches;
+        bestMatchCount = matchCount;
+        bestScore = score;
+        break;
+      }
+      if (requireChapterNeedle && strongMatches === 0) {
+        continue;
+      }
+      if (matchCount <= 0) {
+        continue;
+      }
+      if (
+        strongMatches > bestStrongMatches ||
+        (strongMatches === bestStrongMatches && matchCount > bestMatchCount) ||
+        (strongMatches === bestStrongMatches && matchCount === bestMatchCount && score > bestScore)
+      ) {
+        bestStrongMatches = strongMatches;
+        bestMatchCount = matchCount;
+        bestUserIndex = index;
+        bestScore = score;
+      }
+    }
+    if (bestUserIndex < 0 || bestScore <= 0) {
+      return null;
+    }
+
+    for (let index = bestUserIndex + 1; index < conversationTurns.length; index += 1) {
+      const turn = conversationTurns[index];
+      if (!isAssistantTurn(turn)) continue;
+      const payload = extractAssistantPayload(turn, index);
+      if (payload) {
+        return payload;
+      }
+    }
+    return null;
+  })()`;
 }
 
 export function buildPromptEchoMatcher(promptPreview?: string | null): PromptEchoMatcher | null {
@@ -442,3 +798,7 @@ export function alignPromptEchoMarkdown(
   });
   return { answerText: aligned.answerText, answerMarkdown: aligned.answerMarkdown };
 }
+
+export const __test__ = {
+  buildConversationRecoveryExpression,
+};

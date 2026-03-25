@@ -8,6 +8,7 @@ import type { BrowserRunResult } from '../browserMode.js';
 import { assembleBrowserPrompt } from './prompt.js';
 import { BrowserAutomationError } from '../oracle/errors.js';
 import type { BrowserLogger } from './types.js';
+import { extractConversationIdFromUrl } from './reattachHelpers.js';
 
 export interface BrowserExecutionResult {
   usage: {
@@ -19,6 +20,12 @@ export interface BrowserExecutionResult {
   elapsedMs: number;
   runtime: BrowserRuntimeMetadata;
   answerText: string;
+  response?: {
+    messageId?: string | null;
+    turnId?: string | null;
+    tabUrl?: string;
+    conversationId?: string;
+  };
 }
 
 interface RunBrowserSessionArgs {
@@ -150,8 +157,12 @@ export async function runBrowserSessionExecution(
       chromePort: browserResult.chromePort,
       chromeHost: browserResult.chromeHost,
       userDataDir: browserResult.userDataDir,
+      chromeTargetId: browserResult.chromeTargetId,
+      tabUrl: browserResult.tabUrl,
+      conversationId: extractConversationIdFromUrl(browserResult.tabUrl ?? ''),
       controllerPid: browserResult.controllerPid ?? process.pid,
     },
     answerText,
+    response: browserResult.response,
   };
 }

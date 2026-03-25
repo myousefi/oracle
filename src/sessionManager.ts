@@ -72,10 +72,14 @@ export interface BrowserMetadata {
 }
 
 export interface SessionResponseMetadata {
-  id?: string;
+  responseId?: string;
   requestId?: string | null;
   status?: string;
   incompleteReason?: string | null;
+  messageId?: string | null;
+  turnId?: string | null;
+  tabUrl?: string;
+  conversationId?: string;
 }
 
 export interface SessionTransportMetadata {

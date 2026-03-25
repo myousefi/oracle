@@ -850,6 +850,12 @@ export async function runBrowserMode(options: BrowserRunOptions): Promise<Browse
       chromeTargetId: lastTargetId,
       tabUrl: lastUrl,
       controllerPid: process.pid,
+      response: {
+        messageId: answer.meta.messageId ?? undefined,
+        turnId: answer.meta.turnId ?? undefined,
+        tabUrl: lastUrl,
+        conversationId: lastUrl ? extractConversationIdFromUrl(lastUrl) : undefined,
+      },
     };
   } catch (error) {
     const normalizedError = error instanceof Error ? error : new Error(String(error));
@@ -1562,6 +1568,12 @@ async function runRemoteBrowserMode(
       chromeTargetId: remoteTargetId ?? undefined,
       tabUrl: lastUrl,
       controllerPid: process.pid,
+      response: {
+        messageId: answer.meta.messageId ?? undefined,
+        turnId: answer.meta.turnId ?? undefined,
+        tabUrl: lastUrl,
+        conversationId: lastUrl ? extractConversationIdFromUrl(lastUrl) : undefined,
+      },
     };
   } catch (error) {
     const normalizedError = error instanceof Error ? error : new Error(String(error));

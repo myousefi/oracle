@@ -27,8 +27,10 @@ import {
   openConversationFromSidebarWithRetry,
   waitForLocationChange,
   readConversationTurnIndex,
+  readConversationLocation,
   buildPromptEchoMatcher,
   recoverPromptEcho,
+  waitForRecoveredAssistantTurn,
   alignPromptEchoMarkdown,
   type TargetInfoLite,
 } from './reattachHelpers.js';
@@ -40,11 +42,26 @@ export interface ReattachDeps {
   captureAssistantMarkdown?: typeof captureAssistantMarkdown;
   recoverSession?: (runtime: BrowserRuntimeMetadata, config: BrowserSessionConfig | undefined) => Promise<ReattachResult>;
   promptPreview?: string;
+  promptText?: string;
+  responseMeta?: {
+    messageId?: string | null;
+    turnId?: string | null;
+    tabUrl?: string;
+    conversationId?: string;
+  };
+  allowLatestResponseFallback?: boolean;
 }
 
 export interface ReattachResult {
   answerText: string;
   answerMarkdown: string;
+  response?: {
+    status: 'completed';
+    messageId?: string | null;
+    turnId?: string | null;
+    tabUrl?: string;
+    conversationId?: string;
+  };
 }
 
 export async function resumeBrowserSession(
@@ -88,18 +105,19 @@ export async function resumeBrowserSession(
     }
 
     const ensureConversationOpen = async () => {
+      const expectedConversationId = runtime.conversationId ?? extractConversationIdFromUrl(runtime.tabUrl ?? '');
       const { result } = await Runtime.evaluate({ expression: 'location.href', returnByValue: true });
       const href = typeof result?.value === 'string' ? result.value : '';
       if (href.includes('/c/')) {
         const currentId = extractConversationIdFromUrl(href);
-        if (!runtime.conversationId || (currentId && currentId === runtime.conversationId)) {
+        if (expectedConversationId ? currentId === expectedConversationId : Boolean(currentId)) {
           return;
         }
       }
       const opened = await openConversationFromSidebarWithRetry(
         Runtime,
         {
-          conversationId: runtime.conversationId ?? extractConversationIdFromUrl(runtime.tabUrl ?? ''),
+          conversationId: expectedConversationId || undefined,
           preferProjects: true,
           promptPreview: deps.promptPreview,
         },
@@ -121,8 +139,57 @@ export async function resumeBrowserSession(
       'Reattach target did not respond',
     );
     await ensureConversationOpen();
+    const conversation = await readConversationLocation(Runtime);
+    const promptEcho = buildPromptEchoMatcher(deps.promptText ?? deps.promptPreview);
+    const recoveredTurn = await waitForRecoveredAssistantTurn(Runtime, {
+      messageId: deps.responseMeta?.turnId ? deps.responseMeta?.messageId : undefined,
+      turnId: deps.responseMeta?.turnId,
+      promptText: deps.promptText,
+      promptPreview: deps.promptPreview,
+    }, 10_000);
+    if (recoveredTurn) {
+      logger(
+        deps.responseMeta?.messageId || deps.responseMeta?.turnId
+          ? 'Recovered assistant response from stored turn metadata'
+          : 'Recovered assistant response by matching the original user prompt',
+      );
+      const canCaptureMarkdown = Boolean(recoveredTurn.meta.messageId || recoveredTurn.meta.turnId);
+      if (!canCaptureMarkdown) {
+        logger('Recovered assistant turn has no stable DOM id; using extracted text instead of copy-button capture.');
+      }
+      const markdown = canCaptureMarkdown
+        ? ((await withTimeout(
+            captureMarkdown(Runtime, recoveredTurn.meta, logger),
+            15_000,
+            'Reattach markdown capture timed out',
+          )) ?? recoveredTurn.text)
+        : recoveredTurn.text;
+      const aligned = alignPromptEchoMarkdown(recoveredTurn.text, markdown, promptEcho, logger);
+
+      if (client && typeof client.close === 'function') {
+        try {
+          await client.close();
+        } catch {
+          // ignore
+        }
+      }
+
+      return {
+        answerText: aligned.answerText,
+        answerMarkdown: aligned.answerMarkdown,
+        response: {
+          status: 'completed',
+          messageId: recoveredTurn.meta.messageId ?? undefined,
+          turnId: recoveredTurn.meta.turnId ?? undefined,
+          tabUrl: conversation.tabUrl,
+          conversationId: conversation.conversationId,
+        },
+      };
+    }
+    if (deps.allowLatestResponseFallback === false) {
+      throw new Error('Stored assistant turn could not be recovered from the conversation.');
+    }
     const minTurnIndex = await readConversationTurnIndex(Runtime, logger);
-    const promptEcho = buildPromptEchoMatcher(deps.promptPreview);
     const answer = await withTimeout(
       waitForResponse(Runtime, timeoutMs, logger, minTurnIndex ?? undefined),
       timeoutMs + 5_000,
@@ -144,7 +211,17 @@ export async function resumeBrowserSession(
       }
     }
 
-    return { answerText: aligned.answerText, answerMarkdown: aligned.answerMarkdown };
+    return {
+      answerText: aligned.answerText,
+      answerMarkdown: aligned.answerMarkdown,
+      response: {
+        status: 'completed',
+        messageId: recovered.meta.messageId ?? undefined,
+        turnId: recovered.meta.turnId ?? undefined,
+        tabUrl: conversation.tabUrl,
+        conversationId: conversation.conversationId,
+      },
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     logger(`Existing Chrome reattach failed (${message}); reopening browser to locate the session.`);
@@ -228,8 +305,65 @@ async function resumeBrowserSessionViaNewChrome(
   const waitForResponse = deps.waitForAssistantResponse ?? waitForAssistantResponse;
   const captureMarkdown = deps.captureAssistantMarkdown ?? captureAssistantMarkdown;
   const timeoutMs = resolved.timeoutMs ?? 120_000;
+  const conversation = await readConversationLocation(Runtime);
+  const promptEcho = buildPromptEchoMatcher(deps.promptText ?? deps.promptPreview);
+  const recoveredTurn = await waitForRecoveredAssistantTurn(Runtime, {
+    messageId: deps.responseMeta?.turnId ? deps.responseMeta?.messageId : undefined,
+    turnId: deps.responseMeta?.turnId,
+    promptText: deps.promptText,
+    promptPreview: deps.promptPreview,
+  }, 10_000);
+  if (recoveredTurn) {
+    logger(
+      deps.responseMeta?.messageId || deps.responseMeta?.turnId
+        ? 'Recovered assistant response from stored turn metadata'
+        : 'Recovered assistant response by matching the original user prompt',
+    );
+    const canCaptureMarkdown = Boolean(recoveredTurn.meta.messageId || recoveredTurn.meta.turnId);
+    if (!canCaptureMarkdown) {
+      logger('Recovered assistant turn has no stable DOM id; using extracted text instead of copy-button capture.');
+    }
+    const markdown = canCaptureMarkdown
+      ? ((await captureMarkdown(Runtime, recoveredTurn.meta, logger)) ?? recoveredTurn.text)
+      : recoveredTurn.text;
+    const aligned = alignPromptEchoMarkdown(recoveredTurn.text, markdown, promptEcho, logger);
+
+    if (client && typeof client.close === 'function') {
+      try {
+        await client.close();
+      } catch {
+        // ignore
+      }
+    }
+    if (!resolved.keepBrowser) {
+      try {
+        await chrome.kill();
+      } catch {
+        // ignore
+      }
+      if (manualLogin) {
+        await cleanupStaleProfileState(userDataDir, logger, { lockRemovalMode: 'never' }).catch(() => undefined);
+      } else {
+        await rm(userDataDir, { recursive: true, force: true }).catch(() => undefined);
+      }
+    }
+
+    return {
+      answerText: aligned.answerText,
+      answerMarkdown: aligned.answerMarkdown,
+      response: {
+        status: 'completed',
+        messageId: recoveredTurn.meta.messageId ?? undefined,
+        turnId: recoveredTurn.meta.turnId ?? undefined,
+        tabUrl: conversation.tabUrl,
+        conversationId: conversation.conversationId,
+      },
+    };
+  }
+  if (deps.allowLatestResponseFallback === false) {
+    throw new Error('Stored assistant turn could not be recovered from the conversation.');
+  }
   const minTurnIndex = await readConversationTurnIndex(Runtime, logger);
-  const promptEcho = buildPromptEchoMatcher(deps.promptPreview);
   const answer = await waitForResponse(Runtime, timeoutMs, logger, minTurnIndex ?? undefined);
   const recovered = await recoverPromptEcho(Runtime, answer, promptEcho, logger, minTurnIndex, timeoutMs);
   const markdown = (await captureMarkdown(Runtime, recovered.meta, logger)) ?? recovered.text;
@@ -255,7 +389,17 @@ async function resumeBrowserSessionViaNewChrome(
     }
   }
 
-  return { answerText: aligned.answerText, answerMarkdown: aligned.answerMarkdown };
+  return {
+    answerText: aligned.answerText,
+    answerMarkdown: aligned.answerMarkdown,
+    response: {
+      status: 'completed',
+      messageId: recovered.meta.messageId ?? undefined,
+      turnId: recovered.meta.turnId ?? undefined,
+      tabUrl: conversation.tabUrl,
+      conversationId: conversation.conversationId,
+    },
+  };
 }
 
 // biome-ignore lint/style/useNamingConvention: test-only export used in vitest suite

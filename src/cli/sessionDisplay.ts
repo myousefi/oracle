@@ -156,7 +156,11 @@ export async function attachSession(sessionId: string, options?: AttachSessionOp
           }) as unknown as BrowserLogger,
           { verbose: true },
         ),
-        { promptPreview: metadata.promptPreview },
+        {
+          promptPreview: metadata.promptPreview,
+          promptText: metadata.options?.prompt,
+          responseMeta: metadata.response,
+        },
       );
       const outputTokens = estimateTokenCount(result.answerMarkdown);
       const logWriter = sessionStore.createLogWriter(sessionId);
@@ -187,9 +191,13 @@ export async function attachSession(sessionId: string, options?: AttachSessionOp
         },
         browser: {
           config: metadata.browser?.config,
-          runtime,
+          runtime: {
+            ...runtime,
+            tabUrl: result.response?.tabUrl ?? runtime?.tabUrl,
+            conversationId: result.response?.conversationId ?? runtime?.conversationId,
+          },
         },
-        response: { status: 'completed' },
+        response: { status: 'completed', ...(metadata.response ?? {}), ...(result.response ?? {}) },
         error: undefined,
         transport: undefined,
       });

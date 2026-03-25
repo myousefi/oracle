@@ -11,7 +11,7 @@ describe('summarizeModelRunsForConsult', () => {
 	        startedAt: '2025-11-19T00:00:00Z',
 	        completedAt: '2025-11-19T00:00:30Z',
 	        usage: { inputTokens: 1000, outputTokens: 200, reasoningTokens: 0, totalTokens: 1200 },
-	        response: { id: 'resp_123', requestId: 'req_456', status: 'completed' },
+	        response: { responseId: 'resp_123', requestId: 'req_456', status: 'completed' },
 	        log: { path: 'models/gpt-5.2-pro.log' },
 	      },
 	    ];

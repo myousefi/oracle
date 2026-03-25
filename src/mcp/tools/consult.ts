@@ -134,7 +134,7 @@ export function summarizeModelRunsForConsult(
   return runs.map((run) => {
     const response = run.response
       ? {
-          id: run.response.id ?? undefined,
+          id: run.response.responseId ?? undefined,
           requestId: run.response.requestId ?? undefined,
           status: run.response.status ?? undefined,
         }

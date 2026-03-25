@@ -91,6 +91,12 @@ export interface BrowserRunResult {
   chromeTargetId?: string;
   tabUrl?: string;
   controllerPid?: number;
+  response?: {
+    messageId?: string | null;
+    turnId?: string | null;
+    tabUrl?: string;
+    conversationId?: string;
+  };
 }
 
 export type ResolvedBrowserConfig = Required<

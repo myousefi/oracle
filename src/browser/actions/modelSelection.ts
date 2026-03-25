@@ -113,24 +113,37 @@ function buildModelSelectionExpression(targetModel: string, strategy: BrowserMod
     }
 
     const getButtonLabel = () => (button.textContent ?? '').trim();
+    const resolveReportedLabel = (fallback) => {
+      const label = getButtonLabel();
+      const normalized = normalizeText(label);
+      if (!label || normalized === 'chatgpt' || normalized === 'model selector') {
+        return fallback;
+      }
+      return label;
+    };
     if (MODEL_STRATEGY === 'current') {
-      return { status: 'already-selected', label: getButtonLabel() };
+      return { status: 'already-selected', label: resolveReportedLabel(PRIMARY_LABEL) };
     }
     const buttonMatchesTarget = () => {
       const normalizedLabel = normalizeText(getButtonLabel());
       if (!normalizedLabel) return false;
-      if (desiredVersion) {
+      if (normalizedLabel === 'chatgpt' || normalizedLabel === 'model selector') {
+        return false;
+      }
+      const genericVariantOnly =
+        normalizedLabel === 'pro' || normalizedLabel === 'thinking' || normalizedLabel === 'instant';
+      if (desiredVersion && !genericVariantOnly) {
         if (desiredVersion === '5-4' && !normalizedLabel.includes('5 4')) return false;
         if (desiredVersion === '5-3' && !normalizedLabel.includes('5 3')) return false;
         if (desiredVersion === '5-2' && !normalizedLabel.includes('5 2')) return false;
         if (desiredVersion === '5-1' && !normalizedLabel.includes('5 1')) return false;
         if (desiredVersion === '5-0' && !normalizedLabel.includes('5 0')) return false;
       }
-      if (wantsPro && !normalizedLabel.includes(' pro')) return false;
+      if (wantsPro && normalizedLabel !== 'pro' && !normalizedLabel.includes(' pro')) return false;
       if (wantsInstant && !normalizedLabel.includes('instant')) return false;
       if (wantsThinking && !normalizedLabel.includes('thinking')) return false;
       // Also reject if button has variants we DON'T want
-      if (!wantsPro && normalizedLabel.includes(' pro')) return false;
+      if (!wantsPro && (normalizedLabel === 'pro' || normalizedLabel.includes(' pro'))) return false;
       if (!wantsInstant && normalizedLabel.includes('instant')) return false;
       if (!wantsThinking && normalizedLabel.includes('thinking')) return false;
       return true;
@@ -162,6 +175,9 @@ function buildModelSelectionExpression(targetModel: string, strategy: BrowserMod
         return true;
       }
       if (dataSelected === 'true' || selectedStates.includes(dataState)) {
+        return true;
+      }
+      if (node.querySelector('.trailing svg, [data-trailing-style] svg')) {
         return true;
       }
       if (node.querySelector('[data-testid*="check"], [role="img"][data-icon="check"], svg[data-icon="check"]')) {
@@ -366,7 +382,7 @@ function buildModelSelectionExpression(targetModel: string, strategy: BrowserMod
         const match = findBestOption();
         if (match) {
           if (optionIsSelected(match.node)) {
-            resolve({ status: 'already-selected', label: getButtonLabel() || match.label });
+            resolve({ status: 'already-selected', label: resolveReportedLabel(match.label || PRIMARY_LABEL) });
             return;
           }
           dispatchClickSequence(match.node);
@@ -380,7 +396,7 @@ function buildModelSelectionExpression(targetModel: string, strategy: BrowserMod
           // Wait for the top bar label to reflect the requested model; otherwise keep scanning.
           setTimeout(() => {
             if (buttonMatchesTarget()) {
-              resolve({ status: 'switched', label: getButtonLabel() || match.label });
+              resolve({ status: 'switched', label: resolveReportedLabel(match.label || PRIMARY_LABEL) });
               return;
             }
             attempt();
@@ -461,6 +477,8 @@ function buildModelMatchersLiteral(targetModel: string): { labelTokens: string[]
     addVersionTokens('5.3', '5-3', '53');
     if (base.includes('instant')) {
       push('instant', labelTokens);
+      push('for everyday chats', labelTokens);
+      testIdTokens.add('model-switcher-gpt-5-3');
       testIdTokens.add('model-switcher-gpt-5-3-instant');
       testIdTokens.add('gpt-5-3-instant');
       testIdTokens.add('gpt-5.3-instant');
@@ -515,6 +533,7 @@ function buildModelMatchersLiteral(targetModel: string): { labelTokens: string[]
   if (base.includes('pro')) {
     push('proresearch', labelTokens);
     push('research grade', labelTokens);
+    push('research grade intelligence', labelTokens);
     push('advanced reasoning', labelTokens);
     if (base.includes('5.0') || base.includes('5-0') || base.includes('50')) {
       testIdTokens.add('gpt-5.0-pro');

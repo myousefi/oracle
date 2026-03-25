@@ -123,7 +123,7 @@ export async function performSessionRun({
           config: browserConfig,
           runtime: result.runtime,
         },
-        response: undefined,
+        response: { status: 'completed', ...result.response },
         transport: undefined,
         error: undefined,
       });
@@ -610,6 +610,8 @@ async function autoReattachUntilComplete({
       };
       const result = await resumeBrowserSession(runtime, reattachConfig, logger, {
         promptPreview: sessionMeta.promptPreview,
+        promptText: sessionMeta.options?.prompt,
+        responseMeta: sessionMeta.response,
       });
       const answerText = result.answerMarkdown || result.answerText || '';
       const outputTokens = estimateTokenCount(answerText);
@@ -641,9 +643,13 @@ async function autoReattachUntilComplete({
         },
         browser: {
           config: browserConfig,
-          runtime,
+          runtime: {
+            ...runtime,
+            tabUrl: result.response?.tabUrl ?? runtime.tabUrl,
+            conversationId: result.response?.conversationId ?? runtime.conversationId,
+          },
         },
-        response: { status: 'completed' },
+        response: { status: 'completed', ...(sessionMeta.response ?? {}), ...(result.response ?? {}) },
         error: undefined,
         transport: undefined,
       });
