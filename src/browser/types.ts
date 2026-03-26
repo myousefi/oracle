@@ -77,6 +77,37 @@ export interface BrowserRunOptions {
   runtimeHintCb?: (hint: BrowserRuntimeMetadata) => void | Promise<void>;
 }
 
+export interface BrowserReportHeading {
+  level: number;
+  text: string;
+}
+
+export interface BrowserReportTable {
+  index: number;
+  caption?: string | null;
+  rows: string[][];
+}
+
+export interface BrowserReportLink {
+  title: string;
+  url: string;
+  domain?: string | null;
+}
+
+export interface BrowserReportSourceGroup {
+  title: string;
+  links: BrowserReportLink[];
+}
+
+export interface BrowserReport {
+  title?: string | null;
+  text: string;
+  html?: string;
+  headings?: BrowserReportHeading[];
+  tables?: BrowserReportTable[];
+  sources?: BrowserReportSourceGroup[];
+}
+
 export interface BrowserRunResult {
   answerText: string;
   answerMarkdown: string;
@@ -96,6 +127,7 @@ export interface BrowserRunResult {
     turnId?: string | null;
     tabUrl?: string;
     conversationId?: string;
+    report?: BrowserReport | null;
   };
 }
 

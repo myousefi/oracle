@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { createWriteStream } from 'node:fs';
 import type { WriteStream } from 'node:fs';
 import net from 'node:net';
-import type { BrowserModelStrategy, CookieParam } from './browser/types.js';
+import type { BrowserModelStrategy, BrowserReport, CookieParam } from './browser/types.js';
 import type { TransportFailureReason, AzureOptions, ModelName, ThinkingTimeLevel } from './oracle.js';
 import { DEFAULT_MODEL, formatElapsed } from './oracle.js';
 import { safeModelSlug } from './oracle/modelResolver.js';
@@ -80,6 +80,7 @@ export interface SessionResponseMetadata {
   turnId?: string | null;
   tabUrl?: string;
   conversationId?: string;
+  report?: BrowserReport | null;
 }
 
 export interface SessionTransportMetadata {
@@ -133,6 +134,7 @@ export interface StoredRunOptions {
   outputPath?: string;
   aspectRatio?: string;
   geminiShowThoughts?: boolean;
+  geminiDeepResearch?: boolean;
   /** Gemini web options (newer shape; prefer this when present). */
   geminiWeb?: {
     youtube?: string;
@@ -141,6 +143,7 @@ export interface StoredRunOptions {
     outputPath?: string;
     showThoughts?: boolean;
     aspectRatio?: string;
+    deepResearch?: boolean;
   };
 }
 
@@ -452,6 +455,7 @@ export async function initializeSession(
       outputPath: options.outputPath,
       aspectRatio: options.aspectRatio,
       geminiShowThoughts: options.geminiShowThoughts,
+      geminiDeepResearch: options.geminiDeepResearch,
     },
   };
   await ensureDir(modelsDir(sessionId));

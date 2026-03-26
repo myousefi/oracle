@@ -45,6 +45,7 @@ describe('sessionStore', () => {
         outputPath: 'out.png',
         aspectRatio: '1:1',
         geminiShowThoughts: true,
+        geminiDeepResearch: true,
       },
       process.cwd(),
     );
@@ -56,6 +57,7 @@ describe('sessionStore', () => {
     expect(fetched?.options.outputPath).toBe('out.png');
     expect(fetched?.options.aspectRatio).toBe('1:1');
     expect(fetched?.options.geminiShowThoughts).toBe(true);
+    expect(fetched?.options.geminiDeepResearch).toBe(true);
   });
 
   test('writes per-model logs and aggregates combined log', async () => {

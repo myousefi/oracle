@@ -4,6 +4,7 @@ import { getCookies } from '@steipete/sweet-cookie';
 import { runGeminiWebWithFallback, saveFirstGeminiImageFromOutput } from './client.js';
 import type { GeminiWebModelId } from './client.js';
 import type { GeminiWebOptions, GeminiWebResponse } from './types.js';
+import { runGeminiDeepResearchBrowser } from './deepResearchExecutor.js';
 
 const GEMINI_COOKIE_NAMES = [
   '__Secure-1PSID',
@@ -201,6 +202,10 @@ export function createGeminiWebExecutor(
   geminiOptions: GeminiWebOptions,
 ): (runOptions: BrowserRunOptions) => Promise<BrowserRunResult> {
   return async (runOptions: BrowserRunOptions): Promise<BrowserRunResult> => {
+    if (geminiOptions.deepResearch) {
+      return runGeminiDeepResearchBrowser(runOptions, geminiOptions);
+    }
+
     const startTime = Date.now();
     const log = runOptions.log;
 

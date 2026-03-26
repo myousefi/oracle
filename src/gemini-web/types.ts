@@ -5,6 +5,7 @@ export interface GeminiWebOptions {
   outputPath?: string;
   showThoughts?: boolean;
   aspectRatio?: string;
+  deepResearch?: boolean;
 }
 
 export interface GeminiWebResponse {

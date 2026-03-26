@@ -351,6 +351,12 @@ function sanitizeResult(result: BrowserRunResult): BrowserRunResult {
     chromePid: undefined,
     chromePort: undefined,
     userDataDir: undefined,
+    response: result.response
+      ? {
+          ...result.response,
+          report: result.response.report ?? undefined,
+        }
+      : undefined,
   };
 }
 

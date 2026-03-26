@@ -17,9 +17,21 @@ const saveFirstGeminiImageFromOutput = vi.fn<(...args: unknown[]) => Promise<unk
   imageCount: 1,
 }));
 
+const runGeminiDeepResearchBrowser = vi.fn<(...args: unknown[]) => Promise<unknown>>(async () => ({
+  answerText: 'deep research report',
+  answerMarkdown: 'deep research report',
+  tookMs: 1234,
+  answerTokens: 100,
+  answerChars: 20,
+}));
+
 vi.mock('../../src/gemini-web/client.js', () => ({
   runGeminiWebWithFallback,
   saveFirstGeminiImageFromOutput,
+}));
+
+vi.mock('../../src/gemini-web/deepResearchExecutor.js', () => ({
+  runGeminiDeepResearchBrowser,
 }));
 
 const getCookies = vi.fn(async () => ({
@@ -35,6 +47,7 @@ describe('gemini-web executor', () => {
   beforeEach(() => {
     runGeminiWebWithFallback.mockClear();
     saveFirstGeminiImageFromOutput.mockClear();
+    runGeminiDeepResearchBrowser.mockClear();
     getCookies.mockClear();
   });
 
@@ -150,5 +163,23 @@ describe('gemini-web executor', () => {
       log: () => {},
     });
     expect(getCookies).not.toHaveBeenCalled();
+  });
+
+  it('routes deep research runs through the browser executor branch', async () => {
+    const { createGeminiWebExecutor } = await import('../../src/gemini-web/executor.js');
+    const exec = createGeminiWebExecutor({ deepResearch: true });
+    const result = await exec({
+      prompt: 'research amd diffusion inference',
+      attachments: [],
+      config: { desiredModel: 'gemini-3-pro' },
+      log: () => {},
+    });
+
+    expect(runGeminiDeepResearchBrowser).toHaveBeenCalledWith(
+      expect.objectContaining({ prompt: 'research amd diffusion inference' }),
+      expect.objectContaining({ deepResearch: true }),
+    );
+    expect(runGeminiWebWithFallback).not.toHaveBeenCalled();
+    expect(result.answerText).toBe('deep research report');
   });
 });

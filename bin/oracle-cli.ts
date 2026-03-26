@@ -152,6 +152,7 @@ interface CliOptions extends OptionValues {
   output?: string;
   aspect?: string;
   geminiShowThoughts?: boolean;
+  geminiDeepResearch?: boolean;
   copyMarkdown?: boolean;
   copy?: boolean;
   verbose?: boolean;
@@ -545,6 +546,7 @@ program
     ),
   )
   .addOption(new Option('--gemini-show-thoughts', 'Display Gemini thinking process (Gemini web/cookie mode only).').default(false))
+  .addOption(new Option('--gemini-deep-research', 'Use Gemini Deep Research and auto-start the generated research plan (Gemini browser mode only).').default(false))
   .option(
     '--retain-hours <hours>',
     'Prune stored sessions older than this many hours before running (set 0 to disable).',
@@ -971,7 +973,19 @@ function resolveBrowserDepsFromMetadata(
       return { executeBrowser: createGrokWebExecutor({}) };
     }
     if (isGemini) {
-      return { executeBrowser: createGeminiWebExecutor(stored.geminiWeb ?? {}) };
+      return {
+        executeBrowser: createGeminiWebExecutor(
+          stored.geminiWeb ?? {
+            youtube: stored.youtube,
+            generateImage: stored.generateImage,
+            editImage: stored.editImage,
+            outputPath: stored.outputPath,
+            aspectRatio: stored.aspectRatio,
+            showThoughts: stored.geminiShowThoughts,
+            deepResearch: stored.geminiDeepResearch,
+          },
+        ),
+      };
     }
     return undefined;
   };
@@ -1172,6 +1186,12 @@ async function runRootCommand(options: CliOptions): Promise<void> {
     );
   }
   const resolvedModel: ModelName = normalizeChatGptModelForBrowser(primaryModelCandidate);
+  if (options.geminiDeepResearch && !resolvedModel.startsWith('gemini')) {
+    throw new Error('--gemini-deep-research requires a Gemini model.');
+  }
+  if (options.geminiDeepResearch && engine !== 'browser' && !userForcedBrowser) {
+    throw new Error('--gemini-deep-research requires --engine browser.');
+  }
   const effectiveModelId = resolvedModel.startsWith('gemini')
     ? resolveGeminiModelId(resolvedModel)
     : isKnownModel(resolvedModel)
@@ -1393,11 +1413,18 @@ async function runRootCommand(options: CliOptions): Promise<void> {
       outputPath: options.output,
       aspectRatio: options.aspect,
       showThoughts: options.geminiShowThoughts,
+      deepResearch: options.geminiDeepResearch,
     };
     browserDeps = {
       executeBrowser: createGeminiWebExecutor(geminiWeb),
     };
-    console.log(chalk.dim('Using Gemini web client for browser automation'));
+    console.log(
+      chalk.dim(
+        options.geminiDeepResearch
+          ? 'Using Gemini Deep Research browser automation'
+          : 'Using Gemini web client for browser automation',
+      ),
+    );
     if (browserConfig.modelStrategy && browserConfig.modelStrategy !== 'select') {
       console.log(chalk.dim('Browser model strategy is ignored for Gemini web runs.'));
     }
@@ -1449,6 +1476,7 @@ async function runRootCommand(options: CliOptions): Promise<void> {
       outputPath: options.output,
       aspectRatio: options.aspect,
       geminiShowThoughts: options.geminiShowThoughts,
+      geminiDeepResearch: options.geminiDeepResearch,
       browserExecutor,
       remoteHost: remoteHostForSession,
       geminiWeb,
@@ -1688,9 +1716,16 @@ async function restartSession(sessionId: string, options: RestartCommandOptions)
         outputPath: storedOptions.outputPath,
         aspectRatio: storedOptions.aspectRatio,
         showThoughts: storedOptions.geminiShowThoughts,
+        deepResearch: storedOptions.geminiDeepResearch,
       }),
     };
-    console.log(chalk.dim('Using Gemini web client for browser automation'));
+    console.log(
+      chalk.dim(
+        storedOptions.geminiDeepResearch
+          ? 'Using Gemini Deep Research browser automation'
+          : 'Using Gemini web client for browser automation',
+      ),
+    );
     if (browserConfig.modelStrategy && browserConfig.modelStrategy !== 'select') {
       console.log(chalk.dim('Browser model strategy is ignored for Gemini web runs.'));
     }
@@ -1699,6 +1734,26 @@ async function restartSession(sessionId: string, options: RestartCommandOptions)
 
   await sessionStore.ensureStorage();
   const notifications = deriveNotificationSettingsFromMetadata(metadata, process.env, userConfig.notify);
+  const restartedBrowserExecutor = remoteHost
+    ? 'remote'
+    : runOptions.model.startsWith('gemini')
+      ? 'gemini'
+      : runOptions.model.startsWith('grok')
+        ? 'grok'
+        : browserConfig
+          ? 'chatgpt'
+          : undefined;
+  const restartedGeminiWeb = runOptions.model.startsWith('gemini')
+    ? {
+        youtube: storedOptions.youtube,
+        generateImage: storedOptions.generateImage,
+        editImage: storedOptions.editImage,
+        outputPath: storedOptions.outputPath,
+        aspectRatio: storedOptions.aspectRatio,
+        showThoughts: storedOptions.geminiShowThoughts,
+        deepResearch: storedOptions.geminiDeepResearch,
+      }
+    : undefined;
   const sessionMeta = await sessionStore.createSession(
     {
       ...runOptions,
@@ -1711,6 +1766,10 @@ async function restartSession(sessionId: string, options: RestartCommandOptions)
       outputPath: storedOptions.outputPath,
       aspectRatio: storedOptions.aspectRatio,
       geminiShowThoughts: storedOptions.geminiShowThoughts,
+      geminiDeepResearch: storedOptions.geminiDeepResearch,
+      browserExecutor: restartedBrowserExecutor,
+      remoteHost: remoteHost ?? undefined,
+      geminiWeb: restartedGeminiWeb,
     },
     cwd,
     notifications,
