@@ -89,11 +89,24 @@ export async function submitPrompt(
     throw new Error('Failed to focus prompt textarea');
   }
 
-  await input.insertText({ text: prompt });
+  // Learned: Input.insertText treats \n as Enter in ProseMirror/contenteditable editors,
+  // which submits the form early and silently truncates multi-line prompts.
+  // Fix: execCommand('insertText') inserts text literally into the focused element without
+  // triggering keyboard event side effects, so newlines become soft breaks, not form submits.
+  const inserted = await runtime.evaluate({
+    expression: `document.execCommand('insertText', false, ${JSON.stringify(prompt)})`,
+    returnByValue: true,
+  });
+  if (!inserted?.result?.value) {
+    // Fallback: \r is treated as soft line break rather than Enter/submit in ProseMirror
+    await input.insertText({ text: prompt.replace(/\n/g, '\r') });
+  }
 
   // Some pages (notably ChatGPT when subscriptions/widgets load) need a brief settle
   // before the send button becomes enabled; give it a short breather to avoid races.
   await delay(500);
+
+  await ensureChatGptSearchEnabled(runtime, logger);
 
   const primarySelectorLiteral = JSON.stringify(PROMPT_PRIMARY_SELECTOR);
   const fallbackSelectorLiteral = JSON.stringify(PROMPT_FALLBACK_SELECTOR);
@@ -326,6 +339,97 @@ export function buildAttachmentReadyExpressionForTest(attachmentNames: string[])
   return buildAttachmentReadyExpression(attachmentNames);
 }
 
+async function ensureChatGptSearchEnabled(
+  Runtime: ChromeClient['Runtime'],
+  logger?: BrowserLogger,
+  timeoutMs = 8_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  const script = `(() => {
+    ${buildClickDispatcher()}
+    const normalize = (value) => String(value || '').toLowerCase().replace(/\\s+/g, ' ').trim();
+    const isVisible = (node) => {
+      if (!node || typeof node.getBoundingClientRect !== 'function') return false;
+      const rect = node.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return false;
+      const style = window.getComputedStyle(node);
+      if (!style) return false;
+      if (style.display === 'none' || style.visibility === 'hidden' || style.pointerEvents === 'none') return false;
+      return true;
+    };
+    const labelOf = (node) =>
+      normalize(node?.textContent || node?.getAttribute?.('aria-label') || node?.getAttribute?.('title') || '');
+
+    const selectedChip = Array.from(document.querySelectorAll('button,[role="button"]')).find((node) => {
+      if (!isVisible(node)) return false;
+      const label = labelOf(node);
+      return (label.includes('search') || label.includes('web search')) && label.includes('click to remove');
+    });
+    if (selectedChip) {
+      return { status: 'selected' };
+    }
+
+    const addButton = Array.from(document.querySelectorAll('button,[role="button"]')).find((node) => {
+      if (!isVisible(node)) return false;
+      const label = labelOf(node);
+      return label.includes('add files and more');
+    });
+    if (!(addButton instanceof HTMLElement)) {
+      return { status: 'button-missing' };
+    }
+
+    const menuItem = Array.from(document.querySelectorAll('[role="menuitemradio"],[role="menuitemcheckbox"],[role="menuitem"],button'))
+      .find((node) => {
+        if (!isVisible(node)) return false;
+        const label = labelOf(node);
+        return label === 'web search' || label === 'search';
+      });
+
+    if (menuItem instanceof HTMLElement) {
+      const checked =
+        menuItem.getAttribute('aria-checked') === 'true' ||
+        menuItem.getAttribute('aria-pressed') === 'true' ||
+        menuItem.getAttribute('data-state') === 'checked';
+      if (!checked) {
+        dispatchClickSequence(menuItem);
+        return { status: 'clicked-search' };
+      }
+      return { status: 'selected' };
+    }
+
+    dispatchClickSequence(addButton);
+    return { status: 'opened-menu' };
+  })()`;
+
+  while (Date.now() < deadline) {
+    const { result } = await Runtime.evaluate({ expression: script, returnByValue: true });
+    const status = (result?.value as { status?: string } | undefined)?.status;
+    if (status === 'selected') {
+      logger?.('ChatGPT web search enabled');
+      return;
+    }
+    if (status === 'clicked-search') {
+      logger?.('Enabled ChatGPT web search');
+    }
+    if (status === 'button-missing') {
+      if (logger) {
+        await logDomFailure(Runtime, logger, 'enable-web-search');
+      }
+      throw new BrowserAutomationError('Failed to locate the ChatGPT "Add files and more" button while enabling Search.', {
+        stage: 'enable-web-search',
+      });
+    }
+    await delay(150);
+  }
+
+  if (logger) {
+    await logDomFailure(Runtime, logger, 'enable-web-search-timeout');
+  }
+  throw new BrowserAutomationError('Timed out enabling ChatGPT web search before submit.', {
+    stage: 'enable-web-search',
+  });
+}
+
 async function attemptSendButton(
   Runtime: ChromeClient['Runtime'],
   _logger?: BrowserLogger,
@@ -542,5 +646,6 @@ async function verifyPromptCommitted(
 
 // biome-ignore lint/style/useNamingConvention: test-only export used in vitest suite
 export const __test__ = {
+  ensureChatGptSearchEnabled,
   verifyPromptCommitted,
 };

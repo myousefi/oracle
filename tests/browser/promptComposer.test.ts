@@ -2,6 +2,36 @@ import { describe, expect, test, vi } from 'vitest';
 import { __test__ as promptComposer } from '../../src/browser/actions/promptComposer.js';
 
 describe('promptComposer', () => {
+  test('returns immediately when ChatGPT web search chip is already selected', async () => {
+    const runtime = {
+      evaluate: vi.fn().mockResolvedValue({ result: { value: { status: 'selected' } } }),
+    } as unknown as { evaluate: (args: { expression: string; returnByValue?: boolean }) => Promise<unknown> };
+
+    await expect(promptComposer.ensureChatGptSearchEnabled(runtime as never)).resolves.toBeUndefined();
+    expect(runtime.evaluate).toHaveBeenCalledTimes(1);
+  });
+
+  test('opens menu and enables ChatGPT web search before resolving', async () => {
+    const runtime = {
+      evaluate: vi
+        .fn()
+        .mockResolvedValueOnce({ result: { value: { status: 'opened-menu' } } })
+        .mockResolvedValueOnce({ result: { value: { status: 'clicked-search' } } })
+        .mockResolvedValueOnce({ result: { value: { status: 'selected' } } }),
+    } as unknown as { evaluate: (args: { expression: string; returnByValue?: boolean }) => Promise<unknown> };
+
+    await expect(promptComposer.ensureChatGptSearchEnabled(runtime as never)).resolves.toBeUndefined();
+    expect(runtime.evaluate).toHaveBeenCalledTimes(3);
+  });
+
+  test('throws when add files and more button is missing', async () => {
+    const runtime = {
+      evaluate: vi.fn().mockResolvedValue({ result: { value: { status: 'button-missing' } } }),
+    } as unknown as { evaluate: (args: { expression: string; returnByValue?: boolean }) => Promise<unknown> };
+
+    await expect(promptComposer.ensureChatGptSearchEnabled(runtime as never)).rejects.toThrow(/Add files and more/i);
+  });
+
   test('does not treat cleared composer + stop button as committed without a new turn', async () => {
     vi.useFakeTimers();
     try {

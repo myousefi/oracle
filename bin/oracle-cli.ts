@@ -898,6 +898,20 @@ export function enforceBrowserSearchFlag(
   sessionMode: SessionMode,
   logFn: (message: string) => void = console.log,
 ): void {
+  const isChatGptBrowserModel =
+    sessionMode === 'browser' &&
+    typeof runOptions.model === 'string' &&
+    runOptions.model.startsWith('gpt-') &&
+    !runOptions.model.includes('codex');
+
+  if (isChatGptBrowserModel) {
+    if (runOptions.search === false) {
+      logFn(chalk.dim('Note: ChatGPT browser runs always enable search; overriding search=false.'));
+    }
+    runOptions.search = true;
+    return;
+  }
+
   if (sessionMode === 'browser' && runOptions.search === false) {
     logFn(chalk.dim('Note: search is not available in browser engine; ignoring search=false.'));
     runOptions.search = undefined;
