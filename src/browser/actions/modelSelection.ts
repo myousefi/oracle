@@ -1,17 +1,17 @@
-import type { ChromeClient, BrowserLogger, BrowserModelStrategy } from '../types.js';
+import type { ChromeClient, BrowserLogger, BrowserModelStrategy } from "../types.js";
 import {
   MENU_CONTAINER_SELECTOR,
   MENU_ITEM_SELECTOR,
   MODEL_BUTTON_SELECTOR,
-} from '../constants.js';
-import { logDomFailure } from '../domDebug.js';
-import { buildClickDispatcher } from './domEvents.js';
+} from "../constants.js";
+import { logDomFailure } from "../domDebug.js";
+import { buildClickDispatcher } from "./domEvents.js";
 
 export async function ensureModelSelection(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   desiredModel: string,
   logger: BrowserLogger,
-  strategy: BrowserModelStrategy = 'select',
+  strategy: BrowserModelStrategy = "select",
 ) {
   const outcome = await Runtime.evaluate({
     expression: buildModelSelectionExpression(desiredModel, strategy),
@@ -20,26 +20,29 @@ export async function ensureModelSelection(
   });
 
   const result = outcome.result?.value as
-    | { status: 'already-selected'; label?: string | null }
-    | { status: 'switched'; label?: string | null }
-    | { status: 'switched-best-effort'; label?: string | null }
-    | { status: 'option-not-found'; hint?: { temporaryChat?: boolean; availableOptions?: string[] } }
-    | { status: 'button-missing' }
+    | { status: "already-selected"; label?: string | null }
+    | { status: "switched"; label?: string | null }
+    | { status: "switched-best-effort"; label?: string | null }
+    | {
+        status: "option-not-found";
+        hint?: { temporaryChat?: boolean; availableOptions?: string[] };
+      }
+    | { status: "button-missing" }
     | undefined;
 
   switch (result?.status) {
-    case 'already-selected':
-    case 'switched':
-    case 'switched-best-effort': {
+    case "already-selected":
+    case "switched":
+    case "switched-best-effort": {
       const label = result.label ?? desiredModel;
       logger(`Model picker: ${label}`);
       return;
     }
-    case 'option-not-found': {
-      await logDomFailure(Runtime, logger, 'model-switcher-option');
+    case "option-not-found": {
+      await logDomFailure(Runtime, logger, "model-switcher-option");
       const isTemporary = result.hint?.temporaryChat ?? false;
       const available = (result.hint?.availableOptions ?? []).filter(Boolean);
-      const availableHint = available.length > 0 ? ` Available: ${available.join(', ')}.` : '';
+      const availableHint = available.length > 0 ? ` Available: ${available.join(", ")}.` : "";
       const tempHint =
         isTemporary && /\bpro\b/i.test(desiredModel)
           ? ' You are in Temporary Chat mode; Pro models are not available there. Remove "temporary-chat=true" from --chatgpt-url or use a non-Pro model (e.g. gpt-5.4).'
@@ -47,8 +50,8 @@ export async function ensureModelSelection(
       throw new Error(`Unable to find model option matching "${desiredModel}" in the model switcher.${availableHint}${tempHint}`);
     }
     default: {
-      await logDomFailure(Runtime, logger, 'model-switcher-button');
-      throw new Error('Unable to locate the ChatGPT model selector button.');
+      await logDomFailure(Runtime, logger, "model-switcher-button");
+      throw new Error("Unable to locate the ChatGPT model selector button.");
     }
   }
 }
@@ -57,7 +60,10 @@ export async function ensureModelSelection(
  * Builds the DOM expression that runs inside the ChatGPT tab to select a model.
  * The string is evaluated inside Chrome, so keep it self-contained and well-commented.
  */
-function buildModelSelectionExpression(targetModel: string, strategy: BrowserModelStrategy): string {
+function buildModelSelectionExpression(
+  targetModel: string,
+  strategy: BrowserModelStrategy,
+): string {
   const matchers = buildModelMatchersLiteral(targetModel);
   const labelLiteral = JSON.stringify(matchers.labelTokens);
   const idLiteral = JSON.stringify(matchers.testIdTokens);
@@ -111,6 +117,26 @@ function buildModelSelectionExpression(targetModel: string, strategy: BrowserMod
     if (!button) {
       return { status: 'button-missing' };
     }
+
+    const closeMenu = () => {
+      try {
+        if (dispatchClickSequence(button)) {
+          lastPointerClick = performance.now();
+          return;
+        }
+      } catch {}
+      try {
+        document.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: 'Escape',
+            code: 'Escape',
+            keyCode: 27,
+            which: 27,
+            bubbles: true,
+          }),
+        );
+      } catch {}
+    };
 
     const getButtonLabel = () => (button.textContent ?? '').trim();
     const resolveReportedLabel = (fallback) => {
@@ -214,6 +240,12 @@ function buildModelSelectionExpression(targetModel: string, strategy: BrowserMod
             normalizedTestId.includes('gpt-5-2') ||
             normalizedTestId.includes('gpt-5.2') ||
             normalizedTestId.includes('gpt52');
+          const has54 =
+            normalizedTestId.includes('5-4') ||
+            normalizedTestId.includes('5.4') ||
+            normalizedTestId.includes('gpt-5-4') ||
+            normalizedTestId.includes('gpt-5.4') ||
+            normalizedTestId.includes('gpt54');
           const has51 =
             normalizedTestId.includes('5-1') ||
             normalizedTestId.includes('5.1') ||
@@ -421,7 +453,10 @@ export function buildModelMatchersLiteralForTest(targetModel: string) {
   return buildModelMatchersLiteral(targetModel);
 }
 
-function buildModelMatchersLiteral(targetModel: string): { labelTokens: string[]; testIdTokens: string[] } {
+function buildModelMatchersLiteral(targetModel: string): {
+  labelTokens: string[];
+  testIdTokens: string[];
+} {
   const base = targetModel.trim().toLowerCase();
   const labelTokens = new Set<string>();
   const testIdTokens = new Set<string>();
@@ -434,10 +469,10 @@ function buildModelMatchersLiteral(targetModel: string): { labelTokens: string[]
   };
 
   push(base, labelTokens);
-  push(base.replace(/\s+/g, ' '), labelTokens);
-  const collapsed = base.replace(/\s+/g, '');
+  push(base.replace(/\s+/g, " "), labelTokens);
+  const collapsed = base.replace(/\s+/g, "");
   push(collapsed, labelTokens);
-  const dotless = base.replace(/[.]/g, '');
+  const dotless = base.replace(/[.]/g, "");
   push(dotless, labelTokens);
   push(`chatgpt ${base}`, labelTokens);
   push(`chatgpt ${dotless}`, labelTokens);
@@ -540,13 +575,18 @@ function buildModelMatchersLiteral(targetModel: string): { labelTokens: string[]
       testIdTokens.add('gpt-5-0-pro');
       testIdTokens.add('gpt50pro');
     }
-    if (base.includes('5.2') || base.includes('5-2') || base.includes('52')) {
-      testIdTokens.add('gpt-5.2-pro');
-      testIdTokens.add('gpt-5-2-pro');
-      testIdTokens.add('gpt52pro');
+    if (base.includes("5.0") || base.includes("5-0") || base.includes("50")) {
+      testIdTokens.add("gpt-5.0-pro");
+      testIdTokens.add("gpt-5-0-pro");
+      testIdTokens.add("gpt50pro");
     }
-    testIdTokens.add('pro');
-    testIdTokens.add('proresearch');
+    if (base.includes("5.2") || base.includes("5-2") || base.includes("52")) {
+      testIdTokens.add("gpt-5.2-pro");
+      testIdTokens.add("gpt-5-2-pro");
+      testIdTokens.add("gpt52pro");
+    }
+    testIdTokens.add("pro");
+    testIdTokens.add("proresearch");
   }
   base
     .split(/\s+/)
@@ -556,7 +596,7 @@ function buildModelMatchersLiteral(targetModel: string): { labelTokens: string[]
       push(token, labelTokens);
     });
 
-  const hyphenated = base.replace(/\s+/g, '-');
+  const hyphenated = base.replace(/\s+/g, "-");
   push(hyphenated, testIdTokens);
   push(collapsed, testIdTokens);
   push(dotless, testIdTokens);
@@ -569,7 +609,7 @@ function buildModelMatchersLiteral(targetModel: string): { labelTokens: string[]
     labelTokens.add(base);
   }
   if (!testIdTokens.size) {
-    testIdTokens.add(base.replace(/\s+/g, '-'));
+    testIdTokens.add(base.replace(/\s+/g, "-"));
   }
 
   return {
@@ -579,5 +619,5 @@ function buildModelMatchersLiteral(targetModel: string): { labelTokens: string[]
 }
 
 export function buildModelSelectionExpressionForTest(targetModel: string): string {
-  return buildModelSelectionExpression(targetModel, 'select');
+  return buildModelSelectionExpression(targetModel, "select");
 }

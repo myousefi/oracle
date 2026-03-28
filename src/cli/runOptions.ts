@@ -41,7 +41,9 @@ export function resolveRunOptionsFromConfig({
   }
   const resolvedEngine = resolveEngineWithConfig({ engine, configEngine: userConfig?.engine, env });
   const requestedModelList = Array.isArray(models) ? models : [];
-  const normalizedRequestedModels = requestedModelList.map((entry) => normalizeModelOption(entry)).filter(Boolean);
+  const normalizedRequestedModels = requestedModelList
+    .map((entry) => normalizeModelOption(entry))
+    .filter(Boolean);
 
   const cliModelArg = normalizeModelOption(model ?? userConfig?.model) || DEFAULT_MODEL;
   if (normalizedRequestedModels.length > 1) {
@@ -73,10 +75,11 @@ export function resolveRunOptionsFromConfig({
       ? `${prompt.trim()}\n${userConfig.promptSuffix}`
       : prompt;
 
-  const search = userConfig?.search !== 'off';
+  const search = userConfig?.search !== "off";
 
   const heartbeatIntervalMs =
     userConfig?.heartbeatSeconds !== undefined ? userConfig.heartbeatSeconds * 1000 : 30_000;
+  const maxFileSizeBytes = resolveConfiguredMaxFileSizeBytes(userConfig, env);
 
   const effectiveModelId = resolveEffectiveModelId(resolvedModel);
   const runModelList = normalizedRequestedModels.length > 0 ? [resolvedModel] : undefined;
@@ -86,6 +89,7 @@ export function resolveRunOptionsFromConfig({
     model: resolvedModel,
     models: runModelList && runModelList.length > 0 ? runModelList : undefined,
     file: files ?? [],
+    maxFileSizeBytes,
     search,
     heartbeatIntervalMs,
     filesReport: userConfig?.filesReport,
@@ -115,7 +119,7 @@ function resolveEngineWithConfig({
 }
 
 function resolveEffectiveModelId(model: ModelName): string {
-  if (typeof model === 'string' && model.startsWith('gemini')) {
+  if (typeof model === "string" && model.startsWith("gemini")) {
     return resolveGeminiModelId(model);
   }
   const config = MODEL_CONFIGS[model as keyof typeof MODEL_CONFIGS];

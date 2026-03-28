@@ -1,5 +1,5 @@
-import type { Command } from 'commander';
-import kleur from 'kleur';
+import type { Command } from "commander";
+import kleur from "kleur";
 
 type Stylizer = (text: string) => string;
 
@@ -16,8 +16,11 @@ interface HelpColors {
   accent: Stylizer;
 }
 
-const createColorWrapper = (isTty: boolean) => (styler: Stylizer): Stylizer => (text) =>
-  isTty ? styler(text) : text;
+const createColorWrapper =
+  (isTty: boolean) =>
+  (styler: Stylizer): Stylizer =>
+  (text) =>
+    isTty ? styler(text) : text;
 
 export function applyHelpStyling(program: Command, version: string, isTty: boolean): void {
   const wrap = createColorWrapper(isTty);
@@ -55,8 +58,8 @@ export function applyHelpStyling(program: Command, version: string, isTty: boole
     },
   });
 
-  program.addHelpText('beforeAll', () => renderHelpBanner(version, colors));
-  program.addHelpText('after', () => renderHelpFooter(program, colors));
+  program.addHelpText("beforeAll", () => renderHelpBanner(version, colors));
+  program.addHelpText("after", () => renderHelpFooter(program, colors));
 }
 
 function renderHelpBanner(version: string, colors: HelpColors): string {
@@ -88,7 +91,7 @@ function renderHelpFooter(program: Command, colors: HelpColors): string {
   const examples = [
     formatExample(
       `${program.name()} --render --copy --prompt "Review the TS data layer for schema drift" --file "src/**/*.ts,*/*.test.ts"`,
-      'Build the bundle, print it, and copy it for manual paste into ChatGPT.',
+      "Build the bundle, print it, and copy it for manual paste into ChatGPT.",
     ),
     formatExample(
       `${program.name()} --prompt "Cross-check the data layer assumptions" --model gpt-5.4-pro --file "src/**/*.ts"`,
@@ -96,27 +99,27 @@ function renderHelpFooter(program: Command, colors: HelpColors): string {
     ),
     formatExample(
       `${program.name()} status --hours 72 --limit 50`,
-      'Show sessions from the last 72h (capped at 50 entries).',
+      "Show sessions from the last 72h (capped at 50 entries).",
     ),
     formatExample(
       `${program.name()} session <sessionId>`,
-      'Attach to a running/completed session and stream the saved transcript.',
+      "Attach to a running/completed session and stream the saved transcript.",
     ),
     formatExample(
       `${program.name()} --prompt "Ship review" --slug "release-readiness-audit"`,
-      'Encourage the model to hand you a 3–5 word slug and pass it along with --slug.',
+      "Encourage the model to hand you a 3–5 word slug and pass it along with --slug.",
     ),
     formatExample(
       `${program.name()} --prompt "Tabs frozen: compare Project A SettingsView (apps/project-a/Sources/SettingsView.swift) vs Project B SettingsView (../project-b/mac/App/Presentation/Views/SettingsView.swift)" --file apps/project-a/Sources/SettingsView.swift --file ../project-b/mac/App/Presentation/Views/SettingsView.swift`,
-      'Spell out what each attached file is (repo + path + role) before asking for comparisons so the model knows exactly what it is reading.',
+      "Spell out what each attached file is (repo + path + role) before asking for comparisons so the model knows exactly what it is reading.",
     ),
-  ].join('\n\n');
+  ].join("\n\n");
 
   return `
-${colors.section('Tips')}
+${colors.section("Tips")}
 ${tips}
 
-${colors.section('Examples')}
+${colors.section("Examples")}
 ${examples}
 `;
 }

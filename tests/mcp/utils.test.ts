@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'vitest';
-import { mapConsultToRunOptions } from '../../src/mcp/utils.js';
+import { describe, expect, test } from "vitest";
+import { mapConsultToRunOptions } from "../../src/mcp/utils.js";
 
 describe('mapConsultToRunOptions', () => {
   test('rejects multi-model selections', () => {

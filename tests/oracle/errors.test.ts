@@ -1,6 +1,6 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test } from "vitest";
 
-import { toTransportError } from '@src/oracle/errors.js';
+import { toTransportError } from "@src/oracle/errors.js";
 
 // Minimal stub matching openai APIError signature without pulling undici Headers.
 class FakeApiError extends Error {
@@ -9,9 +9,9 @@ class FakeApiError extends Error {
   code?: string;
   constructor(message: string, code: string) {
     super(message);
-    this.name = 'APIError';
+    this.name = "APIError";
     this.status = 400;
-    this.error = { message, code, param: 'model' };
+    this.error = { message, code, param: "model" };
     this.code = code;
   }
 }
@@ -25,10 +25,10 @@ describe('toTransportError', () => {
     expect(transport.message).toContain('gpt-5.4');
   });
 
-  test('maps generic API error to api-error with message', () => {
-    const apiError = new FakeApiError('Rate limit exceeded', 'rate_limit_exceeded');
-    const transport = toTransportError(apiError, 'gpt-5.1');
-    expect(transport.reason).toBe('api-error');
-    expect(transport.message).toContain('Rate limit exceeded');
+  test("maps generic API error to api-error with message", () => {
+    const apiError = new FakeApiError("Rate limit exceeded", "rate_limit_exceeded");
+    const transport = toTransportError(apiError, "gpt-5.1");
+    expect(transport.reason).toBe("api-error");
+    expect(transport.message).toContain("Rate limit exceeded");
   });
 });

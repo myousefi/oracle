@@ -30,20 +30,19 @@ import { mapModelToBrowserLabel, resolveBrowserModelLabel, resolveGrokBrowserLab
 
 // Use raw shapes so the MCP SDK (with its bundled Zod) wraps them and emits valid JSON Schema.
 const consultInputShape = {
-  prompt: z
-    .string()
-    .min(1, 'Prompt is required.')
-    .describe('User prompt to run.'),
+  prompt: z.string().min(1, "Prompt is required.").describe("User prompt to run."),
   files: z
     .array(z.string())
     .default([])
     .describe(
-      'Optional file paths or glob patterns (like the CLI `--file`). Resolved relative to the MCP server working directory.',
+      "Optional file paths or glob patterns (like the CLI `--file`). Resolved relative to the MCP server working directory.",
     ),
   model: z
     .string()
     .optional()
-    .describe('Single model name/label. Prefer setting `engine` explicitly to avoid default surprises.'),
+    .describe(
+      "Single model name/label. Prefer setting `engine` explicitly to avoid default surprises.",
+    ),
   models: z
     .array(z.string())
     .optional()
@@ -59,7 +58,7 @@ const consultInputShape = {
       'Browser-only: explicit ChatGPT UI label to select (overrides model mapping). Example: "GPT-5.4 Thinking".',
     ),
   browserAttachments: z
-    .enum(['auto', 'never', 'always'])
+    .enum(["auto", "never", "always"])
     .optional()
     .describe(
       'Browser-only: how to deliver `files`. Use "always" for real ChatGPT file uploads (including images/PDFs). Use "never" to paste file contents inline. "auto" chooses based on prompt size.',
@@ -67,15 +66,15 @@ const consultInputShape = {
   browserBundleFiles: z
     .boolean()
     .optional()
-    .describe('Browser-only: bundle many files into a single upload (helps with upload limits).'),
+    .describe("Browser-only: bundle many files into a single upload (helps with upload limits)."),
   browserThinkingTime: z
-    .enum(['light', 'standard', 'extended', 'heavy'])
+    .enum(["light", "standard", "extended", "heavy"])
     .optional()
-    .describe('Browser-only: set ChatGPT thinking time when supported by the chosen model.'),
+    .describe("Browser-only: set ChatGPT thinking time when supported by the chosen model."),
   browserKeepBrowser: z
     .boolean()
     .optional()
-    .describe('Browser-only: keep Chrome running after completion (useful for debugging).'),
+    .describe("Browser-only: keep Chrome running after completion (useful for debugging)."),
   search: z
     .boolean()
     .optional()
@@ -83,7 +82,7 @@ const consultInputShape = {
   slug: z
     .string()
     .optional()
-    .describe('Optional human-friendly session id (used for later `oracle sessions` lookups).'),
+    .describe("Optional human-friendly session id (used for later `oracle sessions` lookups)."),
 } satisfies z.ZodRawShape;
 
 const consultModelSummaryShape = z.object({
@@ -147,7 +146,7 @@ export function summarizeModelRunsForConsult(
       : undefined;
     return {
       model: run.model,
-      status: run.status ?? 'unknown',
+      status: run.status ?? "unknown",
       startedAt: run.startedAt,
       completedAt: run.completedAt,
       usage: run.usage,
@@ -158,11 +157,56 @@ export function summarizeModelRunsForConsult(
   });
 }
 
+export function buildConsultBrowserConfig({
+  userConfig,
+  env,
+  runModel,
+  inputModel,
+  browserModelLabel,
+  browserThinkingTime,
+  browserKeepBrowser,
+}: {
+  userConfig: UserConfig;
+  env: Record<string, string | undefined>;
+  runModel: string;
+  inputModel?: string;
+  browserModelLabel?: string;
+  browserThinkingTime?: "light" | "standard" | "extended" | "heavy";
+  browserKeepBrowser?: boolean;
+}): BrowserSessionConfig {
+  const configuredBrowser = userConfig.browser ?? {};
+  const envProfileDir = (env.ORACLE_BROWSER_PROFILE_DIR ?? "").trim();
+  const hasProfileDir = envProfileDir.length > 0;
+  const preferredLabel = (browserModelLabel ?? inputModel)?.trim();
+  const isChatGptModel = runModel.startsWith("gpt-") && !runModel.includes("codex");
+  const desiredModelLabel = isChatGptModel
+    ? mapModelToBrowserLabel(runModel)
+    : resolveBrowserModelLabel(preferredLabel, runModel);
+  const configuredUrl = configuredBrowser.chatgptUrl ?? configuredBrowser.url ?? CHATGPT_URL;
+  const manualLogin = hasProfileDir ? true : (configuredBrowser.manualLogin ?? false);
+
+  return {
+    ...configuredBrowser,
+    url: configuredUrl,
+    chatgptUrl: configuredUrl,
+    cookieSync: !manualLogin,
+    headless: configuredBrowser.headless ?? false,
+    hideWindow: configuredBrowser.hideWindow ?? false,
+    keepBrowser: browserKeepBrowser ?? configuredBrowser.keepBrowser ?? false,
+    manualLogin,
+    manualLoginProfileDir: manualLogin
+      ? ((envProfileDir || configuredBrowser.manualLoginProfileDir) ?? null)
+      : null,
+    thinkingTime: browserThinkingTime ?? configuredBrowser.thinkingTime,
+    desiredModel: desiredModelLabel || mapModelToBrowserLabel(runModel),
+  };
+}
+
 export function registerConsultTool(server: McpServer): void {
   server.registerTool(
-    'consult',
+    "consult",
     {
-      title: 'Run an oracle session',
+      title: "Run an oracle session",
       description:
         'Run a one-shot Oracle session using browser automation. Use `files` to attach project context. For browser-based image/file uploads, set `browserAttachments:"always"`. Sessions are stored under `ORACLE_HOME_DIR` (shared with the CLI).',
       // Cast to any to satisfy SDK typings across differing Zod versions.
@@ -170,7 +214,7 @@ export function registerConsultTool(server: McpServer): void {
       outputSchema: consultOutputShape,
     },
     async (input: unknown) => {
-      const textContent = (text: string) => [{ type: 'text' as const, text }];
+      const textContent = (text: string) => [{ type: "text" as const, text }];
       const {
         prompt,
         files,
@@ -202,8 +246,10 @@ export function registerConsultTool(server: McpServer): void {
       const isGrokModel = runOptions.model.startsWith('grok');
 
       const resolvedRemote = resolveRemoteServiceConfig({ userConfig, env: process.env });
-      const browserGuard = ensureBrowserAvailable(resolvedEngine, { remoteHost: resolvedRemote.host });
-      if (resolvedEngine === 'browser' && browserGuard) {
+      const browserGuard = ensureBrowserAvailable(resolvedEngine, {
+        remoteHost: resolvedRemote.host,
+      });
+      if (resolvedEngine === "browser" && browserGuard) {
         return {
           isError: true,
           content: textContent(browserGuard),
@@ -229,7 +275,10 @@ export function registerConsultTool(server: McpServer): void {
           };
         }
         browserDeps = {
-          executeBrowser: createRemoteBrowserExecutor({ host: resolvedRemote.host, token: resolvedRemote.token }),
+          executeBrowser: createRemoteBrowserExecutor({
+            host: resolvedRemote.host,
+            token: resolvedRemote.token,
+          }),
         };
       } else if (resolvedEngine === 'browser' && isGrokModel) {
         browserDeps = {
@@ -286,12 +335,12 @@ export function registerConsultTool(server: McpServer): void {
 
       const logWriter = sessionStore.createLogWriter(sessionMeta.id);
       // Best-effort: emit MCP logging notifications for live chunks but never block the run.
-      const sendLog = (text: string, level: 'info' | 'debug' = 'info') =>
+      const sendLog = (text: string, level: "info" | "debug" = "info") =>
         server.server
           .sendLoggingMessage(
             LoggingMessageNotificationParamsSchema.parse({
               level,
-              data: { text, bytes: Buffer.byteLength(text, 'utf8') },
+              data: { text, bytes: Buffer.byteLength(text, "utf8") },
             }),
           )
           .catch(() => {});
@@ -305,7 +354,7 @@ export function registerConsultTool(server: McpServer): void {
       };
       const write = (chunk: string): boolean => {
         logWriter.writeChunk(chunk);
-        sendLog(chunk, 'debug');
+        sendLog(chunk, "debug");
         return true;
       };
 
@@ -327,7 +376,9 @@ export function registerConsultTool(server: McpServer): void {
         log(`Run failed: ${error instanceof Error ? error.message : String(error)}`);
         return {
           isError: true,
-          content: textContent(`Session ${sessionMeta.id} failed: ${error instanceof Error ? error.message : String(error)}`),
+          content: textContent(
+            `Session ${sessionMeta.id} failed: ${error instanceof Error ? error.message : String(error)}`,
+          ),
         };
       } finally {
         logWriter.stream.end();
@@ -339,18 +390,20 @@ export function registerConsultTool(server: McpServer): void {
         const logTail = await readSessionLogTail(sessionMeta.id, 4000);
         const modelsSummary = summarizeModelRunsForConsult(finalMeta.models);
         return {
-          content: textContent([summary, logTail || '(log empty)'].join('\n').trim()),
+          content: textContent([summary, logTail || "(log empty)"].join("\n").trim()),
           structuredContent: {
             sessionId: sessionMeta.id,
             status: finalMeta.status,
-            output: logTail ?? '',
+            output: logTail ?? "",
             models: modelsSummary,
           },
         };
       } catch (error) {
         return {
           isError: true,
-          content: textContent(`Session completed but metadata fetch failed: ${error instanceof Error ? error.message : String(error)}`),
+          content: textContent(
+            `Session completed but metadata fetch failed: ${error instanceof Error ? error.message : String(error)}`,
+          ),
         };
       }
     },

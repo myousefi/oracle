@@ -1,22 +1,46 @@
 {
   "name": "@steipete/oracle",
-  "version": "0.8.5",
-  "description": "CLI wrapper around OpenAI Responses API with GPT-5.2 Pro (via gpt-5.1-pro alias), GPT-5.2, GPT-5.1, and GPT-5.1 Codex high reasoning modes.",
-  "type": "module",
-  "main": "dist/bin/oracle-cli.js",
+  "version": "0.9.0",
+  "description": "CLI wrapper around OpenAI Responses API with GPT-5.4 Pro, GPT-5.4, GPT-5.2, GPT-5.1, and GPT-5.1 Codex high reasoning modes.",
+  "keywords": [],
+  "homepage": "https://github.com/steipete/oracle#readme",
+  "bugs": {
+    "url": "https://github.com/steipete/oracle/issues"
+  },
+  "license": "MIT",
+  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/steipete/oracle.git"
+  },
   "bin": {
     "oracle": "dist/bin/oracle-cli.js",
     "oracle-mcp": "dist/bin/oracle-mcp.js"
   },
+  "files": [
+    "dist/**/*",
+    "assets-oracle-icon.png",
+    "vendor/oracle-notifier/OracleNotifier.swift",
+    "vendor/oracle-notifier/OracleNotifier.app/**",
+    "vendor/oracle-notifier/build-notifier.sh",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "main": "dist/bin/oracle-cli.js",
   "scripts": {
     "docs:list": "tsx scripts/docs-list.ts",
     "build": "tsc -p tsconfig.build.json && pnpm run build:vendor && node scripts/postbuild.mjs",
     "build:vendor": "node -e \"const fs=require('fs'); const path=require('path'); const vendorRoot=path.join('dist','vendor'); fs.rmSync(vendorRoot,{recursive:true,force:true}); const vendors=[['oracle-notifier']]; vendors.forEach(([name])=>{const src=path.join('vendor',name); const dest=path.join(vendorRoot,name); fs.mkdirSync(dest,{recursive:true}); if(fs.existsSync(src)){fs.cpSync(src,dest,{recursive:true,force:true});}});\"",
     "start": "pnpm run build && node ./dist/scripts/run-cli.js",
     "oracle": "pnpm start",
-    "check": "pnpm run typecheck",
+    "check": "pnpm run format:check && pnpm run lint",
     "typecheck": "tsc --noEmit",
-    "lint": "pnpm run typecheck && biome lint .",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "format:diff": "oxfmt --write . && git --no-pager diff",
+    "lint": "pnpm run typecheck && oxlint",
+    "lint:fix": "oxlint --fix && pnpm run format",
     "test": "vitest run",
     "test:mcp": "pnpm run build && pnpm run test:mcp:unit && pnpm run test:mcp:mcporter",
     "test:mcp:unit": "vitest run tests/mcp*.test.ts tests/mcp/**/*.test.ts",
@@ -29,21 +53,48 @@
     "prepare": "pnpm run build",
     "mcp": "pnpm run build && node ./dist/scripts/run-mcp.js"
   },
-  "files": [
-    "dist/**/*",
-    "assets-oracle-icon.png",
-    "vendor/oracle-notifier/OracleNotifier.swift",
-    "vendor/oracle-notifier/OracleNotifier.app/**",
-    "vendor/oracle-notifier/build-notifier.sh",
-    "README.md",
-    "LICENSE"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/steipete/oracle.git"
+  "dependencies": {
+    "@anthropic-ai/tokenizer": "^0.0.4",
+    "@google/genai": "^1.44.0",
+    "@google/generative-ai": "^0.24.1",
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@steipete/sweet-cookie": "^0.2.0",
+    "chalk": "^5.6.2",
+    "chrome-launcher": "^1.2.1",
+    "chrome-remote-interface": "^0.34.0",
+    "clipboardy": "^5.3.1",
+    "commander": "^14.0.3",
+    "dotenv": "^17.3.1",
+    "fast-glob": "^3.3.3",
+    "gpt-tokenizer": "^3.4.0",
+    "inquirer": "13.3.0",
+    "json5": "^2.2.3",
+    "kleur": "^4.1.5",
+    "markdansi": "0.2.1",
+    "openai": "^6.27.0",
+    "osc-progress": "^0.3.0",
+    "qs": "^6.15.0",
+    "shiki": "^4.0.1",
+    "toasted-notifier": "^10.1.0",
+    "tokentally": "^0.1.1",
+    "zod": "^4.3.6"
   },
-  "engines": {
-    "node": ">=22"
+  "devDependencies": {
+    "@anthropic-ai/tokenizer": "^0.0.4",
+    "@cdktf/node-pty-prebuilt-multiarch": "0.10.2",
+    "@types/chrome-remote-interface": "^0.33.0",
+    "@types/inquirer": "^9.0.9",
+    "@types/node": "^25.3.5",
+    "@vitest/coverage-v8": "4.0.18",
+    "devtools-protocol": "0.0.1595872",
+    "es-toolkit": "^1.45.1",
+    "esbuild": "^0.27.3",
+    "oxfmt": "0.36.0",
+    "oxlint": "^1.51.0",
+    "puppeteer-core": "^24.38.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   },
   "devEngines": {
     "runtime": [
@@ -104,14 +155,14 @@
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   },
+  "packageManager": "pnpm@10.23.0+sha512.21c4e5698002ade97e4efe8b8b4a89a8de3c85a37919f957e7a0f30f38fbc5bbdd05980ffe29179b2fb6e6e691242e098d945d1601772cad0fef5fb6411e2a4b",
   "pnpm": {
     "overrides": {
-      "devtools-protocol": "0.0.1568893"
+      "devtools-protocol": "0.0.1595872"
     },
     "onlyBuiltDependencies": [
       "@cdktf/node-pty-prebuilt-multiarch",
       "esbuild"
     ]
-  },
-  "packageManager": "pnpm@10.23.0+sha512.21c4e5698002ade97e4efe8b8b4a89a8de3c85a37919f957e7a0f30f38fbc5bbdd05980ffe29179b2fb6e6e691242e098d945d1601772cad0fef5fb6411e2a4b"
+  }
 }

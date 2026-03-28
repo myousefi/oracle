@@ -1,17 +1,17 @@
-import { describe, expect, it } from 'vitest';
-import { resolveRunOptionsFromConfig } from '../src/cli/runOptions.js';
-import { estimateRequestTokens } from '../src/oracle/tokenEstimate.js';
-import { DEFAULT_MODEL, MODEL_CONFIGS } from '../src/oracle/config.js';
+import { describe, expect, it } from "vitest";
+import { resolveRunOptionsFromConfig } from "../src/cli/runOptions.js";
+import { estimateRequestTokens } from "../src/oracle/tokenEstimate.js";
+import { DEFAULT_MODEL, MODEL_CONFIGS } from "../src/oracle/config.js";
 
-describe('resolveRunOptionsFromConfig', () => {
-  const basePrompt = 'This prompt is comfortably above twenty characters.';
+describe("resolveRunOptionsFromConfig", () => {
+  const basePrompt = "This prompt is comfortably above twenty characters.";
 
   it('routes to browser mode by default', () => {
     const { resolvedEngine } = resolveRunOptionsFromConfig({
       prompt: basePrompt,
       env: {},
     });
-    expect(resolvedEngine).toBe('browser');
+    expect(resolvedEngine).toBe("browser");
   });
 
   it('rejects explicit --engine api', () => {
@@ -76,28 +76,28 @@ describe('resolveRunOptionsFromConfig', () => {
     const env = { XAI_BASE_URL: 'https://api.example/v1' } as NodeJS.ProcessEnv;
     const { runOptions } = resolveRunOptionsFromConfig({
       prompt: basePrompt,
-      model: 'grok',
+      model: "grok",
       env,
     });
     expect(runOptions.baseUrl).toBe('https://api.example/v1');
   });
 });
 
-describe('estimateRequestTokens', () => {
-  const modelConfig = MODEL_CONFIGS['gpt-5.1'];
+describe("estimateRequestTokens", () => {
+  const modelConfig = MODEL_CONFIGS["gpt-5.1"];
 
-  it('includes instructions, input text, tools, reasoning, background/store, plus buffer', () => {
+  it("includes instructions, input text, tools, reasoning, background/store, plus buffer", () => {
     const request = {
-      model: 'gpt-5.1',
-      instructions: 'sys',
+      model: "gpt-5.1",
+      instructions: "sys",
       input: [
         {
-          role: 'user',
-          content: [{ type: 'input_text', text: 'hello world' }],
+          role: "user",
+          content: [{ type: "input_text", text: "hello world" }],
         },
       ],
-      tools: [{ type: 'web_search_preview' }],
-      reasoning: { effort: 'high' },
+      tools: [{ type: "web_search_preview" }],
+      reasoning: { effort: "high" },
       background: true,
       store: true,
     };
@@ -105,13 +105,17 @@ describe('estimateRequestTokens', () => {
     expect(estimate).toBeGreaterThan(10);
   });
 
-  it('adds buffer even with minimal input', () => {
+  it("adds buffer even with minimal input", () => {
     const request = {
-      model: 'gpt-5.1',
-      instructions: 'a',
-      input: [{ role: 'user', content: [{ type: 'input_text', text: 'b' }] }],
+      model: "gpt-5.1",
+      instructions: "a",
+      input: [{ role: "user", content: [{ type: "input_text", text: "b" }] }],
     };
-    const estimate = estimateRequestTokens(request as unknown as Parameters<typeof estimateRequestTokens>[0], modelConfig, 50);
+    const estimate = estimateRequestTokens(
+      request as unknown as Parameters<typeof estimateRequestTokens>[0],
+      modelConfig,
+      50,
+    );
     expect(estimate).toBeGreaterThanOrEqual(50);
   });
 });

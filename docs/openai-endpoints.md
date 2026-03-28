@@ -9,26 +9,34 @@ Oracle uses the official OpenAI Node.js SDK, which allows it to connect to any A
 
 ## Azure OpenAI
 
-To use Azure OpenAI, point Oracle at your Azure resource and supply the Azure key:
+Oracle uses Azure's v1 Responses endpoint when `--azure-endpoint` (or `azure.endpoint`) is set.
+Pass your resource endpoint, Azure key, and optionally a deployment name when it differs from Oracle's CLI model alias:
 
 ```bash
 export AZURE_OPENAI_ENDPOINT="https://your-resource-name.openai.azure.com/"
 export AZURE_OPENAI_API_KEY="your-azure-api-key"
-export AZURE_OPENAI_API_VERSION="2024-02-15-preview"
+export AZURE_OPENAI_DEPLOYMENT="gpt-5-1-pro"
 ```
 
 Key lookup for GPT-family models when an Azure endpoint is set:
+
 - First looks for `AZURE_OPENAI_API_KEY`.
 - Falls back to `OPENAI_API_KEY` if the Azure key is missing.
 
 Without an Azure endpoint, Oracle keeps using `OPENAI_API_KEY` as before.
+
+Notes:
+
+- Oracle calls Azure at `https://<resource>.openai.azure.com/openai/v1`.
+- For Responses API runs, Azure expects `model` to be your deployment name. Use `--azure-deployment` or `azure.deployment` when the deployment name does not exactly match the CLI model alias.
+- `AZURE_OPENAI_API_VERSION` is still accepted for back-compat, but Azure's v1 Responses endpoint does not require it.
 
 ### CLI Configuration
 
 You can also pass the Azure settings via CLI flags (env for the key is still recommended):
 
 ```bash
-oracle --azure-endpoint https://... --azure-deployment my-deployment-name --azure-api-version 2024-02-15-preview
+oracle --azure-endpoint https://... --azure-deployment my-deployment-name
 ```
 
 ## Custom Base URLs (LiteLLM, Localhost)
@@ -85,6 +93,6 @@ export OPENROUTER_API_KEY="sk-or-..."
 oracle --model minimax/minimax-m2 --prompt "Summarize the notes"
 ```
 
- - If `OPENROUTER_API_KEY` is set and no provider-specific key is available for the chosen model, Oracle defaults the base URL to `https://openrouter.ai/api/v1`.
- - You can still set `--base-url` explicitly; if it points at OpenRouter (with or without a trailing `/responses`), Oracle will use `OPENROUTER_API_KEY` and forward optional attribution headers (`OPENROUTER_REFERER` / `OPENROUTER_TITLE`).
+- If `OPENROUTER_API_KEY` is set and no provider-specific key is available for the chosen model, Oracle defaults the base URL to `https://openrouter.ai/api/v1`.
+- You can still set `--base-url` explicitly; if it points at OpenRouter (with or without a trailing `/responses`), Oracle will use `OPENROUTER_API_KEY` and forward optional attribution headers (`OPENROUTER_REFERER` / `OPENROUTER_TITLE`).
 - Multi-model runs accept OpenRouter ids alongside built-in ones. See `docs/openrouter.md` for details.

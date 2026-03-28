@@ -7,11 +7,12 @@ description: Use the oracle CLI to bundle a prompt plus the right files and get 
 
 Oracle bundles your prompt + selected files into one “one-shot” request so another model can answer with real repo context via browser automation. Treat outputs as advisory: verify against the codebase + tests.
 
-## Main use case (browser, GPT‑5.2 Pro)
+## Main use case (browser, GPT‑5.4 Pro)
 
-Default workflow here: `--engine browser` with GPT‑5.2 Pro in ChatGPT. This is the “human in the loop” path: it can take ~10 minutes to ~1 hour; expect a stored session you can reattach to.
+Default workflow here: `--engine browser` with GPT‑5.4 Pro in ChatGPT. This is the “human in the loop” path: it can take ~10 minutes to ~1 hour; expect a stored session you can reattach to.
 
 Recommended defaults:
+
 - Engine: browser (`--engine browser`)
 - Model: GPT‑5.4 Pro (either `--model gpt-5.4-pro` or a ChatGPT picker label like `--model "5.4 Pro"`)
 - Attachments: directories/globs + excludes; avoid secrets.
@@ -59,7 +60,7 @@ Recommended defaults:
   - Honors `.gitignore` when expanding globs.
   - Does not follow symlinks (glob expansion uses `followSymbolicLinks: false`).
   - Dotfiles are filtered unless you explicitly opt in with a pattern that includes a dot-segment (e.g. `--file ".github/**"`).
-  - Hard cap: files > 1 MB are rejected (split files or narrow the match).
+  - Default cap: files > 1 MB are rejected unless you raise `ORACLE_MAX_FILE_SIZE_BYTES` or `maxFileSizeBytes` in `~/.oracle/config.json`.
 
 ## Budget + observability
 
@@ -79,7 +80,7 @@ Recommended defaults:
 ## Sessions + slugs (don’t lose work)
 
 - Stored under `~/.oracle/sessions` (override with `ORACLE_HOME_DIR`).
-- Runs may detach or take a long time (browser + GPT‑5.2 Pro often does). If the CLI times out: don’t re-run; reattach.
+- Runs may detach or take a long time (browser + GPT‑5.4 Pro often does). If the CLI times out: don’t re-run; reattach.
   - List: `oracle status --hours 72`
   - Attach: `oracle session <id> --render`
 - Use `--slug "<3-5 words>"` to keep session IDs readable.
@@ -88,6 +89,7 @@ Recommended defaults:
 ## Prompt template (high signal)
 
 Oracle starts with **zero** project knowledge. Assume the model cannot infer your stack, build tooling, conventions, or “obvious” paths. Include:
+
 - Project briefing (stack + build/test commands + platform constraints).
 - “Where things live” (key directories, entrypoints, config files, dependency boundaries).
 - Exact question + what you tried + the error text (verbatim).
@@ -97,9 +99,10 @@ Oracle starts with **zero** project knowledge. Assume the model cannot infer you
 ### “Exhaustive prompt” pattern (for later restoration)
 
 When you know this will be a long investigation, write a prompt that can stand alone later:
+
 - Top: 6–30 sentence project briefing + current goal.
 - Middle: concrete repro steps + exact errors + what you already tried.
-- Bottom: attach *all* context files needed so a fresh model can fully understand (entrypoints, configs, key modules, docs).
+- Bottom: attach _all_ context files needed so a fresh model can fully understand (entrypoints, configs, key modules, docs).
 
 If you need to reproduce the same context later, re-run with the same prompt + `--file …` set (Oracle runs are one-shot; the model doesn’t remember prior runs).
 

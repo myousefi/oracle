@@ -7,27 +7,32 @@ import type { GeminiWebOptions, GeminiWebResponse } from './types.js';
 import { runGeminiDeepResearchBrowser } from './deepResearchExecutor.js';
 
 const GEMINI_COOKIE_NAMES = [
-  '__Secure-1PSID',
-  '__Secure-1PSIDTS',
-  '__Secure-1PSIDCC',
-  '__Secure-1PAPISID',
-  'NID',
-  'AEC',
-  'SOCS',
-  '__Secure-BUCKET',
-  '__Secure-ENID',
-  'SID',
-  'HSID',
-  'SSID',
-  'APISID',
-  'SAPISID',
-  '__Secure-3PSID',
-  '__Secure-3PSIDTS',
-  '__Secure-3PAPISID',
-  'SIDCC',
+  "__Secure-1PSID",
+  "__Secure-1PSIDTS",
+  "__Secure-1PSIDCC",
+  "__Secure-1PAPISID",
+  "NID",
+  "AEC",
+  "SOCS",
+  "__Secure-BUCKET",
+  "__Secure-ENID",
+  "SID",
+  "HSID",
+  "SSID",
+  "APISID",
+  "SAPISID",
+  "__Secure-3PSID",
+  "__Secure-3PSIDTS",
+  "__Secure-3PAPISID",
+  "SIDCC",
 ] as const;
 
-const GEMINI_REQUIRED_COOKIES = ['__Secure-1PSID', '__Secure-1PSIDTS'] as const;
+const GEMINI_REQUIRED_COOKIES = ["__Secure-1PSID", "__Secure-1PSIDTS"] as const;
+
+interface GeminiCookieLoadResult {
+  cookieMap: Record<string, string>;
+  warnings: string[];
+}
 
 function estimateTokenCount(text: string): number {
   return Math.ceil(text.length / 4);
@@ -44,31 +49,36 @@ function resolveGeminiWebModel(
   desiredModel: string | null | undefined,
   log?: BrowserLogger,
 ): GeminiWebModelId {
-  const desired = typeof desiredModel === 'string' ? desiredModel.trim() : '';
-  if (!desired) return 'gemini-3-pro';
+  const desired = typeof desiredModel === "string" ? desiredModel.trim() : "";
+  if (!desired) return "gemini-3-pro";
+  const normalized = desired.toLowerCase().replace(/[_\s]+/g, "-");
 
-  switch (desired) {
-    case 'gemini-3-pro':
-    case 'gemini-3.0-pro':
-      return 'gemini-3-pro';
-    case 'gemini-2.5-pro':
-      return 'gemini-2.5-pro';
-    case 'gemini-2.5-flash':
-      return 'gemini-2.5-flash';
+  switch (normalized) {
+    case "gemini-3-pro":
+    case "gemini-3.0-pro":
+      return "gemini-3-pro";
+    case "gemini-3-deep-think":
+    case "gemini-3-pro-deep-think":
+    case "gemini-3-pro-deepthink":
+      return "gemini-3-pro-deep-think";
+    case "gemini-2.5-pro":
+      return "gemini-2.5-pro";
+    case "gemini-2.5-flash":
+      return "gemini-2.5-flash";
     default:
-      if (desired.startsWith('gemini-')) {
+      if (normalized.startsWith("gemini-") || normalized.includes("gemini")) {
         log?.(
           `[gemini-web] Unsupported Gemini web model "${desired}". Falling back to gemini-3-pro.`,
         );
       }
-      return 'gemini-3-pro';
+      return "gemini-3-pro";
   }
 }
 
 function resolveCookieDomain(cookie: { domain?: string; url?: string }): string | null {
   const rawDomain = cookie.domain?.trim();
   if (rawDomain) {
-    return rawDomain.startsWith('.') ? rawDomain.slice(1) : rawDomain;
+    return rawDomain.startsWith(".") ? rawDomain.slice(1) : rawDomain;
   }
   const rawUrl = cookie.url?.trim();
   if (rawUrl) {
@@ -81,24 +91,27 @@ function resolveCookieDomain(cookie: { domain?: string; url?: string }): string 
   return null;
 }
 
-function pickCookieValue<T extends { name?: string; value?: string; domain?: string; path?: string; url?: string }>(
-  cookies: T[],
-  name: string,
-): string | undefined {
-  const matches = cookies.filter((cookie) => cookie.name === name && typeof cookie.value === 'string');
+function pickCookieValue<
+  T extends { name?: string; value?: string; domain?: string; path?: string; url?: string },
+>(cookies: T[], name: string): string | undefined {
+  const matches = cookies.filter(
+    (cookie) => cookie.name === name && typeof cookie.value === "string",
+  );
   if (matches.length === 0) return undefined;
 
   const preferredDomain = matches.find((cookie) => {
     const domain = resolveCookieDomain(cookie);
-    return domain === 'google.com' && (cookie.path ?? '/') === '/';
+    return domain === "google.com" && (cookie.path ?? "/") === "/";
   });
-  const googleDomain = matches.find((cookie) => (resolveCookieDomain(cookie) ?? '').endsWith('google.com'));
+  const googleDomain = matches.find((cookie) =>
+    (resolveCookieDomain(cookie) ?? "").endsWith("google.com"),
+  );
   return (preferredDomain ?? googleDomain ?? matches[0])?.value;
 }
 
-function buildGeminiCookieMap<T extends { name?: string; value?: string; domain?: string; path?: string; url?: string }>(
-  cookies: T[],
-): Record<string, string> {
+function buildGeminiCookieMap<
+  T extends { name?: string; value?: string; domain?: string; path?: string; url?: string },
+>(cookies: T[]): Record<string, string> {
   const cookieMap: Record<string, string> = {};
   for (const name of GEMINI_COOKIE_NAMES) {
     const value = pickCookieValue(cookies, name);
@@ -111,57 +124,173 @@ function hasRequiredGeminiCookies(cookieMap: Record<string, string>): boolean {
   return GEMINI_REQUIRED_COOKIES.every((name) => Boolean(cookieMap[name]));
 }
 
-async function loadGeminiCookiesFromInline(
-  browserConfig: BrowserRunOptions['config'],
+const GEMINI_CDP_COOKIE_URLS = [
+  "https://gemini.google.com",
+  "https://accounts.google.com",
+  "https://www.google.com",
+];
+
+async function loadGeminiCookiesFromCDP(
+  browserConfig: BrowserRunOptions["config"],
   log?: BrowserLogger,
-): Promise<Record<string, string>> {
+): Promise<GeminiCookieLoadResult> {
+  const session = await openGeminiBrowserSession({
+    browserConfig,
+    keepBrowserDefault: false,
+    purpose: "Gemini manual-login cookie extraction (no keychain)",
+    log,
+  });
+  try {
+    const client = session.client;
+    const { Network, Page } = client;
+    await Network.enable({});
+    await Page.enable();
+
+    log?.("[gemini-web] Navigating to gemini.google.com for sign-in/cookie capture...");
+    await Page.navigate({ url: "https://gemini.google.com" });
+    await delay(2_000);
+
+    const pollTimeoutMs = 5 * 60_000;
+    const pollIntervalMs = 2_000;
+    const deadline = Date.now() + pollTimeoutMs;
+    let lastNotice = 0;
+    let cookieMap: Record<string, string> = {};
+
+    while (Date.now() < deadline) {
+      const { cookies } = await Network.getCookies({ urls: GEMINI_CDP_COOKIE_URLS });
+      cookieMap = buildGeminiCookieMap(cookies);
+
+      if (hasRequiredGeminiCookies(cookieMap)) {
+        log?.(`[gemini-web] Extracted ${Object.keys(cookieMap).length} Gemini cookie(s) via CDP.`);
+        return { cookieMap, warnings: [] };
+      }
+
+      const now = Date.now();
+      if (now - lastNotice > 10_000) {
+        log?.(
+          "[gemini-web] Waiting for Google sign-in... please sign in in the opened Chrome window.",
+        );
+        lastNotice = now;
+      }
+
+      await delay(pollIntervalMs);
+    }
+
+    throw new Error("Timed out waiting for Google sign-in (5 minutes). Please sign in and retry.");
+  } finally {
+    await session.close();
+  }
+}
+
+async function runGeminiDeepThinkViaBrowser(
+  prompt: string,
+  browserConfig: BrowserRunOptions["config"],
+  log?: BrowserLogger,
+): Promise<{ text: string; thoughts: string | null }> {
+  const session = await openGeminiBrowserSession({
+    browserConfig,
+    keepBrowserDefault: true,
+    purpose: "Gemini Deep Think",
+    log,
+  });
+  try {
+    const client = session.client;
+    const { Runtime, Page } = client;
+    if (
+      !Runtime ||
+      typeof Runtime.enable !== "function" ||
+      typeof Runtime.evaluate !== "function"
+    ) {
+      throw new Error("Chrome Runtime domain unavailable for Gemini Deep Think DOM automation.");
+    }
+    if (!Page || typeof Page.enable !== "function" || typeof Page.navigate !== "function") {
+      throw new Error("Chrome Page domain unavailable for Gemini Deep Think DOM automation.");
+    }
+    await Runtime.enable();
+    await Page.enable();
+
+    const evaluate = async <T>(expression: string): Promise<T | undefined> => {
+      const { result } = await Runtime.evaluate({ expression, returnByValue: true });
+      return result?.value as T | undefined;
+    };
+
+    log?.("[gemini-web] Navigating to gemini.google.com...");
+    await Page.navigate({ url: "https://gemini.google.com/app" });
+    await delay(3_000);
+
+    const domResult = await runProviderDomFlow(geminiDeepThinkDomProvider, {
+      prompt,
+      evaluate,
+      delay,
+      log,
+      state: {
+        inputTimeoutMs: browserConfig?.inputTimeoutMs,
+        timeoutMs: browserConfig?.timeoutMs,
+      },
+    });
+
+    log?.(`[gemini-web] Deep Think response received (${domResult.text.length} chars).`);
+    return domResult;
+  } finally {
+    await session.close();
+  }
+}
+
+async function loadGeminiCookiesFromInline(
+  browserConfig: BrowserRunOptions["config"],
+  log?: BrowserLogger,
+): Promise<GeminiCookieLoadResult> {
   const inline = browserConfig?.inlineCookies;
-  if (!inline || inline.length === 0) return {};
+  if (!inline || inline.length === 0) return { cookieMap: {}, warnings: [] };
 
   const cookieMap = buildGeminiCookieMap(
-    inline.filter((cookie): cookie is CookieParam => Boolean(cookie?.name && typeof cookie.value === 'string')),
+    inline.filter((cookie): cookie is CookieParam =>
+      Boolean(cookie?.name && typeof cookie.value === "string"),
+    ),
   );
 
   if (Object.keys(cookieMap).length > 0) {
-    const source = browserConfig?.inlineCookiesSource ?? 'inline';
-    log?.(`[gemini-web] Loaded Gemini cookies from inline payload (${source}): ${Object.keys(cookieMap).length} cookie(s).`);
+    const source = browserConfig?.inlineCookiesSource ?? "inline";
+    log?.(
+      `[gemini-web] Loaded Gemini cookies from inline payload (${source}): ${Object.keys(cookieMap).length} cookie(s).`,
+    );
   } else {
-    log?.('[gemini-web] Inline cookie payload provided but no Gemini cookies matched.');
+    log?.("[gemini-web] Inline cookie payload provided but no Gemini cookies matched.");
   }
 
-  return cookieMap;
+  return { cookieMap, warnings: [] };
 }
 
 async function loadGeminiCookiesFromChrome(
-  browserConfig: BrowserRunOptions['config'],
+  browserConfig: BrowserRunOptions["config"],
   log?: BrowserLogger,
-): Promise<Record<string, string>> {
+): Promise<GeminiCookieLoadResult> {
   try {
     // Learned: Gemini web relies on Google auth cookies in the *browser* profile, not API keys.
     const profileCandidate =
       browserConfig?.chromeCookiePath ?? browserConfig?.chromeProfile ?? undefined;
     const profile =
-      typeof profileCandidate === 'string' && profileCandidate.trim().length > 0
+      typeof profileCandidate === "string" && profileCandidate.trim().length > 0
         ? profileCandidate.trim()
         : undefined;
 
     const sources = [
-      'https://gemini.google.com',
-      'https://accounts.google.com',
-      'https://www.google.com',
+      "https://gemini.google.com",
+      "https://accounts.google.com",
+      "https://www.google.com",
     ];
 
     const { cookies, warnings } = await getCookies({
       url: sources[0],
       origins: sources,
       names: [...GEMINI_COOKIE_NAMES],
-      browsers: ['chrome'],
-      mode: 'merge',
+      browsers: ["chrome"],
+      mode: "merge",
       chromeProfile: profile,
       timeoutMs: 5_000,
     });
     if (warnings.length && log?.verbose) {
-      log(`[gemini-web] Cookie warnings:\n- ${warnings.join('\n- ')}`);
+      log(`[gemini-web] Cookie warnings:\n- ${warnings.join("\n- ")}`);
     }
 
     const cookieMap = buildGeminiCookieMap(cookies);
@@ -169,33 +298,58 @@ async function loadGeminiCookiesFromChrome(
     log?.(
       `[gemini-web] Loaded Gemini cookies from Chrome (node): ${Object.keys(cookieMap).length} cookie(s).`,
     );
-    return cookieMap;
+    return { cookieMap, warnings };
   } catch (error) {
     log?.(
-      `[gemini-web] Failed to load Chrome cookies via node: ${error instanceof Error ? error.message : String(error ?? '')}`,
+      `[gemini-web] Failed to load Chrome cookies via node: ${error instanceof Error ? error.message : String(error ?? "")}`,
     );
-    return {};
+    return { cookieMap: {}, warnings: [] };
   }
 }
 
+function formatGeminiCookieError(warnings: string[]): string {
+  const base =
+    "Gemini browser mode requires Chrome cookies for google.com (missing __Secure-1PSID/__Secure-1PSIDTS).";
+  const guidance =
+    "Try --browser-manual-login or --browser-inline-cookies-file if local cookie extraction is unavailable.";
+  if (warnings.length === 0) {
+    return `${base} ${guidance}`;
+  }
+  return `${base}\nCookie read warnings:\n- ${warnings.join("\n- ")}\n${guidance}`;
+}
+
 async function loadGeminiCookies(
-  browserConfig: BrowserRunOptions['config'],
+  browserConfig: BrowserRunOptions["config"],
   log?: BrowserLogger,
-): Promise<Record<string, string>> {
-  const inlineMap = await loadGeminiCookiesFromInline(browserConfig, log);
-  const hasInlineRequired = hasRequiredGeminiCookies(inlineMap);
-  if (hasInlineRequired && browserConfig?.cookieSync === false) {
-    return inlineMap;
+  options?: { preferManualNoKeychain?: boolean },
+): Promise<GeminiCookieLoadResult> {
+  const inlineResult = await loadGeminiCookiesFromInline(browserConfig, log);
+  const hasInlineRequired = hasRequiredGeminiCookies(inlineResult.cookieMap);
+  if (hasInlineRequired) {
+    return inlineResult;
+  }
+
+  const manualNoKeychain =
+    Boolean(browserConfig?.manualLogin) || Boolean(options?.preferManualNoKeychain);
+  if (manualNoKeychain) {
+    log?.("[gemini-web] Using manual-login cookie extraction path (no keychain cookie read).");
+    const cdpResult = await loadGeminiCookiesFromCDP(browserConfig, log);
+    return {
+      cookieMap: { ...cdpResult.cookieMap, ...inlineResult.cookieMap },
+      warnings: [...inlineResult.warnings, ...cdpResult.warnings],
+    };
   }
 
   if (browserConfig?.cookieSync === false && !hasInlineRequired) {
-    log?.('[gemini-web] Cookie sync disabled and inline cookies missing Gemini auth tokens.');
-    return inlineMap;
+    log?.("[gemini-web] Cookie sync disabled and inline cookies missing Gemini auth tokens.");
+    return inlineResult;
   }
 
-  const chromeMap = await loadGeminiCookiesFromChrome(browserConfig, log);
-  const merged = { ...chromeMap, ...inlineMap };
-  return merged;
+  const chromeResult = await loadGeminiCookiesFromChrome(browserConfig, log);
+  return {
+    cookieMap: { ...chromeResult.cookieMap, ...inlineResult.cookieMap },
+    warnings: [...inlineResult.warnings, ...chromeResult.warnings],
+  };
 }
 
 export function createGeminiWebExecutor(
@@ -209,30 +363,9 @@ export function createGeminiWebExecutor(
     const startTime = Date.now();
     const log = runOptions.log;
 
-    log?.('[gemini-web] Starting Gemini web executor (TypeScript)');
+    log?.("[gemini-web] Starting Gemini web executor (TypeScript)");
 
-    const cookieMap = await loadGeminiCookies(runOptions.config, log);
-    if (!hasRequiredGeminiCookies(cookieMap)) {
-      throw new Error(
-        'Gemini browser mode requires Chrome cookies for google.com (missing __Secure-1PSID/__Secure-1PSIDTS).',
-      );
-    }
-
-    const configTimeout =
-      typeof runOptions.config?.timeoutMs === 'number' && Number.isFinite(runOptions.config.timeoutMs)
-        ? Math.max(1_000, runOptions.config.timeoutMs)
-        : null;
-
-    const defaultTimeoutMs = geminiOptions.youtube
-      ? 240_000
-      : geminiOptions.generateImage || geminiOptions.editImage
-        ? 300_000
-        : 120_000;
-
-    const timeoutMs = Math.min(configTimeout ?? defaultTimeoutMs, 600_000);
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
+    const model: GeminiWebModelId = resolveGeminiWebModel(runOptions.config?.desiredModel, log);
     const generateImagePath = resolveInvocationPath(geminiOptions.generateImage);
     const editImagePath = resolveInvocationPath(geminiOptions.editImage);
     const outputPath = resolveInvocationPath(geminiOptions.outputPath);
@@ -249,104 +382,183 @@ export function createGeminiWebExecutor(
       prompt = `Generate an image: ${prompt}`;
     }
 
-    const model: GeminiWebModelId = resolveGeminiWebModel(runOptions.config?.desiredModel, log);
-    let response: GeminiWebResponse;
+    const modeSelection = selectGeminiExecutionMode({
+      model,
+      attachmentPaths,
+      generateImagePath,
+      editImagePath,
+    });
 
-    try {
-      if (editImagePath) {
-        const intro = await runGeminiWebWithFallback({
-          prompt: 'Here is an image to edit',
-          files: [editImagePath],
-          model,
-          cookieMap,
-          chatMetadata: null,
-          signal: controller.signal,
-        });
-        const editPrompt = `Use image generation tool to ${prompt}`;
-        const out = await runGeminiWebWithFallback({
-          prompt: editPrompt,
-          files: attachmentPaths,
-          model,
-          cookieMap,
-          chatMetadata: intro.metadata,
-          signal: controller.signal,
-        });
-        response = {
-          text: out.text ?? null,
-          thoughts: geminiOptions.showThoughts ? out.thoughts : null,
-          has_images: false,
-          image_count: 0,
-        };
-
-        const resolvedOutputPath = outputPath ?? generateImagePath ?? 'generated.png';
-        const imageSave = await saveFirstGeminiImageFromOutput(out, cookieMap, resolvedOutputPath, controller.signal);
-        response.has_images = imageSave.saved;
-        response.image_count = imageSave.imageCount;
-        if (!imageSave.saved) {
-          throw new Error(`No images generated. Response text:\n${out.text || '(empty response)'}`);
+    const domClient: IGeminiExecutionClient = {
+      mode: "dom",
+      execute: async () => {
+        log?.("[gemini-web] Using browser DOM automation for Deep Think.");
+        const browserResult = await runGeminiDeepThinkViaBrowser(prompt, runOptions.config, log);
+        const tookMs = Date.now() - startTime;
+        let answerMarkdown = browserResult.text;
+        if (geminiOptions.showThoughts && browserResult.thoughts) {
+          answerMarkdown = `## Thinking\n\n${browserResult.thoughts}\n\n## Response\n\n${browserResult.text}`;
         }
-      } else if (generateImagePath) {
-        const out = await runGeminiWebWithFallback({
-          prompt,
-          files: attachmentPaths,
-          model,
-          cookieMap,
-          chatMetadata: null,
-          signal: controller.signal,
-        });
-        response = {
-          text: out.text ?? null,
-          thoughts: geminiOptions.showThoughts ? out.thoughts : null,
-          has_images: false,
-          image_count: 0,
+        log?.(`[gemini-web] Completed in ${tookMs}ms`);
+        return {
+          answerText: browserResult.text,
+          answerMarkdown,
+          tookMs,
+          answerTokens: estimateTokenCount(browserResult.text),
+          answerChars: browserResult.text.length,
         };
-        const imageSave = await saveFirstGeminiImageFromOutput(out, cookieMap, generateImagePath, controller.signal);
-        response.has_images = imageSave.saved;
-        response.image_count = imageSave.imageCount;
-        if (!imageSave.saved) {
-          throw new Error(`No images generated. Response text:\n${out.text || '(empty response)'}`);
-        }
-      } else {
-        const out = await runGeminiWebWithFallback({
-          prompt,
-          files: attachmentPaths,
-          model,
-          cookieMap,
-          chatMetadata: null,
-          signal: controller.signal,
-        });
-        response = {
-          text: out.text ?? null,
-          thoughts: geminiOptions.showThoughts ? out.thoughts : null,
-          has_images: out.images.length > 0,
-          image_count: out.images.length,
-        };
-      }
-    } finally {
-      clearTimeout(timeout);
-    }
-
-    const answerText = response.text ?? '';
-    let answerMarkdown = answerText;
-
-    if (geminiOptions.showThoughts && response.thoughts) {
-      answerMarkdown = `## Thinking\n\n${response.thoughts}\n\n## Response\n\n${answerText}`;
-    }
-
-    if (response.has_images && response.image_count > 0) {
-      const imagePath = generateImagePath || outputPath || 'generated.png';
-      answerMarkdown += `\n\n*Generated ${response.image_count} image(s). Saved to: ${imagePath}*`;
-    }
-
-    const tookMs = Date.now() - startTime;
-    log?.(`[gemini-web] Completed in ${tookMs}ms`);
-
-    return {
-      answerText,
-      answerMarkdown,
-      tookMs,
-      answerTokens: estimateTokenCount(answerText),
-      answerChars: answerText.length,
+      },
     };
+
+    const httpClient: IGeminiExecutionClient = {
+      mode: "http",
+      execute: async () => {
+        const useNoKeychainPath = Boolean(runOptions.config?.manualLogin);
+        const cookieResult = await loadGeminiCookies(runOptions.config, log, {
+          preferManualNoKeychain: useNoKeychainPath,
+        });
+        if (!hasRequiredGeminiCookies(cookieResult.cookieMap)) {
+          throw new Error(formatGeminiCookieError(cookieResult.warnings));
+        }
+
+        const configTimeout =
+          typeof runOptions.config?.timeoutMs === "number" &&
+          Number.isFinite(runOptions.config.timeoutMs)
+            ? Math.max(1_000, runOptions.config.timeoutMs)
+            : null;
+
+        const defaultTimeoutMs = geminiOptions.youtube
+          ? 240_000
+          : geminiOptions.generateImage || geminiOptions.editImage
+            ? 300_000
+            : 120_000;
+
+        const timeoutMs = Math.min(configTimeout ?? defaultTimeoutMs, 600_000);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+        let response: GeminiWebResponse;
+
+        try {
+          if (editImagePath) {
+            const intro = await runGeminiWebWithFallback({
+              prompt: "Here is an image to edit",
+              files: [editImagePath],
+              model,
+              cookieMap: cookieResult.cookieMap,
+              chatMetadata: null,
+              signal: controller.signal,
+            });
+            const editPrompt = `Use image generation tool to ${prompt}`;
+            const out = await runGeminiWebWithFallback({
+              prompt: editPrompt,
+              files: attachmentPaths,
+              model,
+              cookieMap: cookieResult.cookieMap,
+              chatMetadata: intro.metadata,
+              signal: controller.signal,
+            });
+            response = {
+              text: out.text ?? null,
+              thoughts: geminiOptions.showThoughts ? out.thoughts : null,
+              has_images: false,
+              image_count: 0,
+            };
+
+            const resolvedOutputPath = outputPath ?? generateImagePath ?? "generated.png";
+            const imageSave = await saveFirstGeminiImageFromOutput(
+              out,
+              cookieResult.cookieMap,
+              resolvedOutputPath,
+              controller.signal,
+            );
+            response.has_images = imageSave.saved;
+            response.image_count = imageSave.imageCount;
+            if (!imageSave.saved) {
+              throw new Error(
+                `No images generated. Response text:\n${out.text || "(empty response)"}`,
+              );
+            }
+          } else if (generateImagePath) {
+            const out = await runGeminiWebWithFallback({
+              prompt,
+              files: attachmentPaths,
+              model,
+              cookieMap: cookieResult.cookieMap,
+              chatMetadata: null,
+              signal: controller.signal,
+            });
+            response = {
+              text: out.text ?? null,
+              thoughts: geminiOptions.showThoughts ? out.thoughts : null,
+              has_images: false,
+              image_count: 0,
+            };
+            const imageSave = await saveFirstGeminiImageFromOutput(
+              out,
+              cookieResult.cookieMap,
+              generateImagePath,
+              controller.signal,
+            );
+            response.has_images = imageSave.saved;
+            response.image_count = imageSave.imageCount;
+            if (!imageSave.saved) {
+              throw new Error(
+                `No images generated. Response text:\n${out.text || "(empty response)"}`,
+              );
+            }
+          } else {
+            const out = await runGeminiWebWithFallback({
+              prompt,
+              files: attachmentPaths,
+              model,
+              cookieMap: cookieResult.cookieMap,
+              chatMetadata: null,
+              signal: controller.signal,
+            });
+            response = {
+              text: out.text ?? null,
+              thoughts: geminiOptions.showThoughts ? out.thoughts : null,
+              has_images: out.images.length > 0,
+              image_count: out.images.length,
+            };
+          }
+        } finally {
+          clearTimeout(timeout);
+        }
+
+        const answerText = response.text ?? "";
+        let answerMarkdown = answerText;
+
+        if (geminiOptions.showThoughts && response.thoughts) {
+          answerMarkdown = `## Thinking\n\n${response.thoughts}\n\n## Response\n\n${answerText}`;
+        }
+
+        if (response.has_images && response.image_count > 0) {
+          const imagePath = generateImagePath || outputPath || "generated.png";
+          answerMarkdown += `\n\n*Generated ${response.image_count} image(s). Saved to: ${imagePath}*`;
+        }
+
+        const tookMs = Date.now() - startTime;
+        log?.(`[gemini-web] Completed in ${tookMs}ms`);
+
+        return {
+          answerText,
+          answerMarkdown,
+          tookMs,
+          answerTokens: estimateTokenCount(answerText),
+          answerChars: answerText.length,
+        };
+      },
+    };
+
+    if (model === "gemini-3-pro-deep-think" && modeSelection.mode === "http") {
+      log?.(
+        `[gemini-web] Deep Think DOM path skipped (${modeSelection.reasons.join(", ")} requested); using HTTP/header fallback path.`,
+      );
+    }
+
+    const executionClient = modeSelection.mode === "dom" ? domClient : httpClient;
+    return executionClient.execute();
   };
 }

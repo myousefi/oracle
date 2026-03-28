@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'vitest';
-import { InvalidArgumentError } from 'commander';
+import { describe, expect, test } from "vitest";
+import { InvalidArgumentError } from "commander";
 import {
   collectPaths,
   parseFloatOption,
@@ -12,141 +12,141 @@ import {
   parseHeartbeatOption,
   mergePathLikeOptions,
   dedupePathInputs,
-} from '../../src/cli/options.ts';
+} from "../../src/cli/options.ts";
 
-describe('collectPaths', () => {
-  test('merges repeated flags and splits comma-separated values', () => {
-    const result = collectPaths(['src/a', 'src/b,src/c'], ['existing']);
-    expect(result).toEqual(['existing', 'src/a', 'src/b', 'src/c']);
+describe("collectPaths", () => {
+  test("merges repeated flags and splits comma-separated values", () => {
+    const result = collectPaths(["src/a", "src/b,src/c"], ["existing"]);
+    expect(result).toEqual(["existing", "src/a", "src/b", "src/c"]);
   });
 
-  test('returns previous list when value is undefined', () => {
-    expect(collectPaths(undefined, ['keep'])).toEqual(['keep']);
+  test("returns previous list when value is undefined", () => {
+    expect(collectPaths(undefined, ["keep"])).toEqual(["keep"]);
   });
 });
 
-describe('mergePathLikeOptions', () => {
-  test('merges aliases in the documented order and splits commas', () => {
-    const result = mergePathLikeOptions(
-      ['a', 'b,c'],
-      ['d'],
-      ['e,f'],
-      ['g'],
-      ['h,i'],
-    );
-    expect(result).toEqual(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i']);
+describe("mergePathLikeOptions", () => {
+  test("merges aliases in the documented order and splits commas", () => {
+    const result = mergePathLikeOptions(["a", "b,c"], ["d"], ["e,f"], ["g"], ["h,i"]);
+    expect(result).toEqual(["a", "b", "c", "d", "e", "f", "g", "h", "i"]);
   });
 
-  test('returns empty array when everything is undefined', () => {
+  test("returns empty array when everything is undefined", () => {
     expect(mergePathLikeOptions(undefined, undefined, undefined, undefined, undefined)).toEqual([]);
   });
 
-  test('trims entries and preserves exclusions/ordering across aliases', () => {
+  test("trims entries and preserves exclusions/ordering across aliases", () => {
     const result = mergePathLikeOptions(
-      ['  src/**/*.ts , !src/**/*.test.ts  '],
-      [' docs/guide.md '],
-      [' assets/**/* '],
-      ['  README.md  ,  !dist/** '],
+      ["  src/**/*.ts , !src/**/*.test.ts  "],
+      [" docs/guide.md "],
+      [" assets/**/* "],
+      ["  README.md  ,  !dist/** "],
       undefined,
     );
     expect(result).toEqual([
-      'src/**/*.ts',
-      '!src/**/*.test.ts',
-      'docs/guide.md',
-      'assets/**/*',
-      'README.md',
-      '!dist/**',
+      "src/**/*.ts",
+      "!src/**/*.test.ts",
+      "docs/guide.md",
+      "assets/**/*",
+      "README.md",
+      "!dist/**",
     ]);
   });
 
-  test('ignores empty strings inside alias arrays', () => {
-    const result = mergePathLikeOptions(['', 'src'], [''], [''], ['lib,'], [' ,tests']);
-    expect(result).toEqual(['src', 'lib', 'tests']);
+  test("ignores empty strings inside alias arrays", () => {
+    const result = mergePathLikeOptions(["", "src"], [""], [""], ["lib,"], [" ,tests"]);
+    expect(result).toEqual(["src", "lib", "tests"]);
   });
 });
 
-describe('dedupePathInputs', () => {
-  test('dedupes literal paths after resolving against cwd', () => {
-    const { deduped, duplicates } = dedupePathInputs(['src/a.ts', './src/a.ts', 'src/b.ts', 'src/a.ts'], {
-      cwd: '/repo',
-    });
-    expect(deduped).toEqual(['src/a.ts', 'src/b.ts']);
-    expect(duplicates).toEqual(['./src/a.ts', 'src/a.ts']);
+describe("dedupePathInputs", () => {
+  test("dedupes literal paths after resolving against cwd", () => {
+    const { deduped, duplicates } = dedupePathInputs(
+      ["src/a.ts", "./src/a.ts", "src/b.ts", "src/a.ts"],
+      {
+        cwd: "/repo",
+      },
+    );
+    expect(deduped).toEqual(["src/a.ts", "src/b.ts"]);
+    expect(duplicates).toEqual(["./src/a.ts", "src/a.ts"]);
   });
 
-  test('dedupes repeated globs/exclusions by literal string', () => {
-    const { deduped, duplicates } = dedupePathInputs(['src/**/*.ts', 'src/**/*.ts', '!dist/**', '!dist/**'], {
-      cwd: '/repo',
-    });
-    expect(deduped).toEqual(['src/**/*.ts', '!dist/**']);
-    expect(duplicates).toEqual(['src/**/*.ts', '!dist/**']);
-  });
-});
-
-describe('parseFloatOption', () => {
-  test('parses numeric strings', () => {
-    expect(parseFloatOption('12.5')).toBeCloseTo(12.5);
-  });
-
-  test('throws for NaN input', () => {
-    expect(() => parseFloatOption('nope')).toThrow(InvalidArgumentError);
+  test("dedupes repeated globs/exclusions by literal string", () => {
+    const { deduped, duplicates } = dedupePathInputs(
+      ["src/**/*.ts", "src/**/*.ts", "!dist/**", "!dist/**"],
+      {
+        cwd: "/repo",
+      },
+    );
+    expect(deduped).toEqual(["src/**/*.ts", "!dist/**"]);
+    expect(duplicates).toEqual(["src/**/*.ts", "!dist/**"]);
   });
 });
 
-describe('parseIntOption', () => {
-  test('parses integers and allows undefined', () => {
+describe("parseFloatOption", () => {
+  test("parses numeric strings", () => {
+    expect(parseFloatOption("12.5")).toBeCloseTo(12.5);
+  });
+
+  test("throws for NaN input", () => {
+    expect(() => parseFloatOption("nope")).toThrow(InvalidArgumentError);
+  });
+});
+
+describe("parseIntOption", () => {
+  test("parses integers and allows undefined", () => {
     expect(parseIntOption(undefined)).toBeUndefined();
-    expect(parseIntOption('42')).toBe(42);
+    expect(parseIntOption("42")).toBe(42);
   });
 
-  test('throws for invalid integers', () => {
-    expect(() => parseIntOption('not-a-number')).toThrow(InvalidArgumentError);
+  test("throws for invalid integers", () => {
+    expect(() => parseIntOption("not-a-number")).toThrow(InvalidArgumentError);
   });
 });
 
-describe('resolvePreviewMode', () => {
-  test('returns explicit mode', () => {
-    expect(resolvePreviewMode('json')).toBe('json');
+describe("resolvePreviewMode", () => {
+  test("returns explicit mode", () => {
+    expect(resolvePreviewMode("json")).toBe("json");
   });
 
-  test('defaults boolean true to summary', () => {
-    expect(resolvePreviewMode(true)).toBe('summary');
+  test("defaults boolean true to summary", () => {
+    expect(resolvePreviewMode(true)).toBe("summary");
   });
 
-  test('returns undefined for falsey values', () => {
+  test("returns undefined for falsey values", () => {
     expect(resolvePreviewMode(undefined)).toBeUndefined();
     expect(resolvePreviewMode(false)).toBeUndefined();
   });
 });
 
-describe('parseHeartbeatOption', () => {
-  test('parses numeric values and defaults to 30 when omitted', () => {
-    expect(parseHeartbeatOption('45')).toBe(45);
+describe("parseHeartbeatOption", () => {
+  test("parses numeric values and defaults to 30 when omitted", () => {
+    expect(parseHeartbeatOption("45")).toBe(45);
     expect(parseHeartbeatOption(undefined)).toBe(30);
   });
 
-  test('accepts 0 or false/off to disable heartbeats', () => {
-    expect(parseHeartbeatOption('0')).toBe(0);
-    expect(parseHeartbeatOption('false')).toBe(0);
-    expect(parseHeartbeatOption('off')).toBe(0);
+  test("accepts 0 or false/off to disable heartbeats", () => {
+    expect(parseHeartbeatOption("0")).toBe(0);
+    expect(parseHeartbeatOption("false")).toBe(0);
+    expect(parseHeartbeatOption("off")).toBe(0);
   });
 
-  test('rejects negative or non-numeric values', () => {
-    expect(() => parseHeartbeatOption('-5')).toThrow(InvalidArgumentError);
-    expect(() => parseHeartbeatOption('nope')).toThrow(InvalidArgumentError);
+  test("rejects negative or non-numeric values", () => {
+    expect(() => parseHeartbeatOption("-5")).toThrow(InvalidArgumentError);
+    expect(() => parseHeartbeatOption("nope")).toThrow(InvalidArgumentError);
   });
 });
 
-describe('parseSearchOption', () => {
-  test('accepts on/off variants', () => {
-    expect(parseSearchOption('on')).toBe(true);
-    expect(parseSearchOption('OFF')).toBe(false);
-    expect(parseSearchOption('Yes')).toBe(true);
-    expect(parseSearchOption('0')).toBe(false);
+describe("parseSearchOption", () => {
+  test("accepts on/off variants", () => {
+    expect(parseSearchOption("on")).toBe(true);
+    expect(parseSearchOption("OFF")).toBe(false);
+    expect(parseSearchOption("Yes")).toBe(true);
+    expect(parseSearchOption("0")).toBe(false);
   });
 
-  test('throws on invalid input', () => {
-    expect(() => parseSearchOption('maybe')).toThrow(InvalidArgumentError);
+  test("throws on invalid input", () => {
+    expect(() => parseSearchOption("maybe")).toThrow(InvalidArgumentError);
   });
 });
 
@@ -176,12 +176,26 @@ describe('resolveApiModel', () => {
     expect(resolveApiModel('Grok 4.1')).toBe('grok-4.20');
   });
 
-  test('rejects codex max until API is available', () => {
-    expect(() => resolveApiModel('gpt-5.1-codex-max')).toThrow('gpt-5.1-codex-max is not available yet');
+  test("rejects codex max until API is available", () => {
+    expect(() => resolveApiModel("gpt-5.1-codex-max")).toThrow(
+      "gpt-5.1-codex-max is not available yet",
+    );
   });
 
-  test('passes through unknown names (OpenRouter/custom)', () => {
-    expect(resolveApiModel('instant')).toBe('instant');
+  test("rejects Gemini deep-think aliases in API mode", () => {
+    expect(() => resolveApiModel("gemini-3-deep-think")).toThrow(
+      "Gemini Deep Think is browser-only today",
+    );
+    expect(() => resolveApiModel("Gemini Deep Think")).toThrow(
+      "Gemini Deep Think is browser-only today",
+    );
+  });
+
+  test("passes through unknown names (OpenRouter/custom)", () => {
+    expect(resolveApiModel("instant")).toBe("instant");
+    expect(resolveApiModel("openai/gpt-5.4")).toBe("openai/gpt-5.4");
+    expect(resolveApiModel("anthropic/claude-sonnet-4.5")).toBe("anthropic/claude-sonnet-4.5");
+    expect(resolveApiModel("google/gemini-2.5-pro")).toBe("google/gemini-2.5-pro");
   });
 });
 
@@ -205,9 +219,10 @@ describe('inferModelFromLabel', () => {
     expect(inferModelFromLabel('5_2 FAST')).toBe('gpt-5.3-instant');
   });
 
-  test('infers Codex labels', () => {
-    expect(inferModelFromLabel('ChatGPT Codex')).toBe('gpt-5.1-codex');
-    expect(inferModelFromLabel('Codex Max Studio')).toBe('gpt-5.1-codex');
+  test("infers 5.1 variants as gpt-5.1", () => {
+    expect(inferModelFromLabel("ChatGPT 5.1 Instant")).toBe("gpt-5.1");
+    expect(inferModelFromLabel("5.1 thinking")).toBe("gpt-5.1");
+    expect(inferModelFromLabel(" 5.1 FAST ")).toBe("gpt-5.1");
   });
 
   test('falls back to pro when the label references pro', () => {
@@ -217,9 +232,8 @@ describe('inferModelFromLabel', () => {
     expect(inferModelFromLabel('GPT-5 Pro (Classic)')).toBe('gpt-5.4-pro');
   });
 
-  test('infers Claude family labels', () => {
-    expect(inferModelFromLabel('Claude Sonnet 4.5')).toBe('claude-4.5-sonnet');
-    expect(inferModelFromLabel('Claude Opus 4.1')).toBe('claude-4.1-opus');
+  test("preserves Gemini 3.1 labels", () => {
+    expect(inferModelFromLabel("Gemini 3.1 Pro")).toBe("gemini-3.1-pro");
   });
 
   test('infers Grok aliases', () => {

@@ -29,9 +29,9 @@ export type ProModelName =
   | 'claude-4.5-sonnet'
   | 'claude-4.1-opus';
 
-export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh';
+export type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
 
-export type ThinkingTimeLevel = 'light' | 'standard' | 'extended' | 'heavy';
+export type ThinkingTimeLevel = "light" | "standard" | "extended" | "heavy";
 
 export interface AzureOptions {
   endpoint?: string;
@@ -55,7 +55,7 @@ export interface ModelConfig {
   /** Provider-specific model id used for API calls (defaults to `model`). */
   apiModel?: string;
   /** Upstream provider to help with OpenRouter mapping and auth precedence. */
-  provider?: 'openai' | 'anthropic' | 'google' | 'xai' | 'other';
+  provider?: "openai" | "anthropic" | "google" | "xai" | "other";
   /** Explicit OpenRouter model id when it differs from apiModel/model. */
   openRouterId?: string;
   tokenizer: TokenizerFn;
@@ -67,7 +67,7 @@ export interface ModelConfig {
   reasoning: { effort: ReasoningEffort } | null;
   supportsBackground?: boolean;
   supportsSearch?: boolean;
-  searchToolType?: ToolConfig['type'];
+  searchToolType?: ToolConfig["type"];
 }
 
 export interface FileContent {
@@ -107,7 +107,7 @@ export interface FileTokenStats {
   totalTokens: number;
 }
 
-export type PreviewMode = 'summary' | 'json' | 'full';
+export type PreviewMode = "summary" | "json" | "full";
 
 export interface ResponseStreamEvent {
   type: string;
@@ -131,7 +131,17 @@ export interface RunOracleOptions {
   prompt: string;
   model: ModelName;
   models?: ModelName[];
+  /**
+   * Continue an OpenAI Responses API conversation by chaining from a prior response id.
+   * This maps to the Responses API field `previous_response_id`.
+   *
+   * Note: Responses API does not carry forward `instructions`, so callers must still
+   * send instructions each turn (Oracle does).
+   */
+  previousResponseId?: string;
   file?: string[];
+  /** Override the per-file attachment size guard (bytes). */
+  maxFileSizeBytes?: number;
   slug?: string;
   filesReport?: boolean;
   maxInput?: number;
@@ -152,14 +162,14 @@ export interface RunOracleOptions {
    * Browser-only: controls whether `--file` inputs are pasted inline (never upload),
    * uploaded as attachments (always), or selected automatically based on prompt size.
    */
-  browserAttachments?: 'auto' | 'never' | 'always';
+  browserAttachments?: "auto" | "never" | "always";
   browserInlineFiles?: boolean;
   browserBundleFiles?: boolean;
   background?: boolean;
   /** Optional absolute path to save only the assistant's final text output. */
   writeOutputPath?: string;
   /** Number of seconds to wait before timing out, or 'auto' to use model defaults. */
-  timeoutSeconds?: number | 'auto';
+  timeoutSeconds?: number | "auto";
   /** Override HTTP client timeout (milliseconds). */
   httpTimeoutMs?: number;
   /** Override zombie timeout for the session (milliseconds). */
@@ -185,7 +195,7 @@ export interface UsageSummary {
 }
 
 export interface PreviewResult {
-  mode: 'preview';
+  mode: "preview";
   previewMode: PreviewMode;
   requestBody: OracleRequestBody;
   estimatedInputTokens: number;
@@ -193,7 +203,7 @@ export interface PreviewResult {
 }
 
 export interface LiveResult {
-  mode: 'live';
+  mode: "live";
   response: OracleResponse;
   usage: UsageSummary;
   elapsedMs: number;
@@ -223,19 +233,21 @@ export interface BuildRequestBodyParams {
   maxOutputTokens?: number;
   background?: boolean;
   storeResponse?: boolean;
+  previousResponseId?: string;
 }
 
 export interface ToolConfig {
-  type: 'web_search_preview' | 'web_search';
+  type: "web_search_preview" | "web_search";
 }
 
 export interface OracleRequestBody {
   model: string;
+  previous_response_id?: string;
   instructions: string;
   input: Array<{
-    role: 'user';
+    role: "user";
     content: Array<{
-      type: 'input_text';
+      type: "input_text";
       text: string;
     }>;
   }>;
@@ -282,10 +294,10 @@ export interface OracleResponseMetadata {
 }
 
 export type TransportFailureReason =
-  | 'client-timeout'
-  | 'connection-lost'
-  | 'client-abort'
-  | 'api-error'
-  | 'model-unavailable'
-  | 'unsupported-endpoint'
-  | 'unknown';
+  | "client-timeout"
+  | "connection-lost"
+  | "client-abort"
+  | "api-error"
+  | "model-unavailable"
+  | "unsupported-endpoint"
+  | "unknown";

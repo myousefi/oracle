@@ -4,10 +4,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const rawArgs = process.argv.slice(2);
-const args: string[] = rawArgs[0] === '--' ? rawArgs.slice(1) : rawArgs;
+const args: string[] = rawArgs[0] === "--" ? rawArgs.slice(1) : rawArgs;
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const cliEntry = path.join(here, '../bin/oracle-cli.js');
+const cliEntry = path.join(here, "../bin/oracle-cli.js");
 
 function canUseBun(): boolean {
   // If we are already running under Bun, prefer staying on it.
@@ -34,6 +34,6 @@ const runtime = resolveRuntimeChoice() === 'bun' ? 'bun' : process.execPath;
 const child = spawn(runtime, [cliEntry, ...args], {
   stdio: 'inherit',
 });
-child.on('exit', (code) => {
+child.on("exit", (code) => {
   process.exit(code ?? 0);
 });

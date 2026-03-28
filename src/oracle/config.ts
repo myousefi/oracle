@@ -1,8 +1,8 @@
-import { countTokens as countTokensGpt5 } from 'gpt-tokenizer/model/gpt-5';
-import { countTokens as countTokensGpt5Pro } from 'gpt-tokenizer/model/gpt-5-pro';
-import type { ModelConfig, ModelName, KnownModelName, ProModelName, TokenizerFn } from './types.js';
-import { countTokens as countTokensAnthropicRaw } from '@anthropic-ai/tokenizer';
-import { stringifyTokenizerInput } from './tokenStringifier.js';
+import { countTokens as countTokensGpt5 } from "gpt-tokenizer/model/gpt-5";
+import { countTokens as countTokensGpt5Pro } from "gpt-tokenizer/model/gpt-5-pro";
+import type { ModelConfig, ModelName, KnownModelName, ProModelName, TokenizerFn } from "./types.js";
+import { countTokens as countTokensAnthropicRaw } from "@anthropic-ai/tokenizer";
+import { stringifyTokenizerInput } from "./tokenStringifier.js";
 
 export const DEFAULT_MODEL: ModelName = 'gpt-5.4-pro';
 export const CURRENT_GPT_MODEL: ModelName = 'gpt-5.4';
@@ -94,9 +94,9 @@ export const MODEL_CONFIGS: Record<KnownModelName, ModelConfig> = {
     pricing: GPT_BASE_PRICING,
     reasoning: { effort: 'high' },
   },
-  'gpt-5.1-codex': {
-    model: 'gpt-5.1-codex',
-    provider: 'openai',
+  "gpt-5.1-codex": {
+    model: "gpt-5.1-codex",
+    provider: "openai",
     tokenizer: countTokensGpt5 as TokenizerFn,
     inputLimit: GPT_INPUT_LIMIT,
     pricing: GPT_BASE_PRICING,
@@ -138,9 +138,9 @@ export const MODEL_CONFIGS: Record<KnownModelName, ModelConfig> = {
     pricing: GPT_BASE_PRICING,
     reasoning: { effort: 'xhigh' },
   },
-  'gemini-3-pro': {
-    model: 'gemini-3-pro',
-    provider: 'google',
+  "gemini-3.1-pro": {
+    model: "gemini-3.1-pro",
+    provider: "google",
     tokenizer: countTokensGpt5Pro as TokenizerFn,
     inputLimit: 200000,
     pricing: {
@@ -151,10 +151,23 @@ export const MODEL_CONFIGS: Record<KnownModelName, ModelConfig> = {
     supportsBackground: false,
     supportsSearch: true,
   },
-  'claude-4.5-sonnet': {
-    model: 'claude-4.5-sonnet',
-    apiModel: 'claude-sonnet-4-5',
-    provider: 'anthropic',
+  "gemini-3-pro": {
+    model: "gemini-3-pro",
+    provider: "google",
+    tokenizer: countTokensGpt5Pro as TokenizerFn,
+    inputLimit: 200000,
+    pricing: {
+      inputPerToken: 2 / 1_000_000,
+      outputPerToken: 12 / 1_000_000,
+    },
+    reasoning: null,
+    supportsBackground: false,
+    supportsSearch: true,
+  },
+  "claude-4.5-sonnet": {
+    model: "claude-4.5-sonnet",
+    apiModel: "claude-sonnet-4-5",
+    provider: "anthropic",
     tokenizer: countTokensAnthropic,
     inputLimit: 200000,
     pricing: {
@@ -165,17 +178,17 @@ export const MODEL_CONFIGS: Record<KnownModelName, ModelConfig> = {
     supportsBackground: false,
     supportsSearch: false,
   },
-  'claude-4.1-opus': {
-    model: 'claude-4.1-opus',
-    apiModel: 'claude-opus-4-1',
-    provider: 'anthropic',
+  "claude-4.1-opus": {
+    model: "claude-4.1-opus",
+    apiModel: "claude-opus-4-1",
+    provider: "anthropic",
     tokenizer: countTokensAnthropic,
     inputLimit: 200000,
     pricing: {
       inputPerToken: 15 / 1_000_000,
       outputPerToken: 75 / 1_000_000,
     },
-    reasoning: { effort: 'high' },
+    reasoning: { effort: "high" },
     supportsBackground: false,
     supportsSearch: false,
   },
@@ -192,13 +205,13 @@ export const MODEL_CONFIGS: Record<KnownModelName, ModelConfig> = {
     reasoning: null,
     supportsBackground: false,
     supportsSearch: true,
-    searchToolType: 'web_search',
+    searchToolType: "web_search",
   },
 };
 
 export const DEFAULT_SYSTEM_PROMPT = [
-  'You are Oracle, a focused one-shot problem solver.',
-  'Emphasize direct answers and cite any files referenced.',
-].join(' ');
+  "You are Oracle, a focused one-shot problem solver.",
+  "Emphasize direct answers and cite any files referenced.",
+].join(" ");
 
-export const TOKENIZER_OPTIONS = { allowedSpecial: 'all' } as const;
+export const TOKENIZER_OPTIONS = { allowedSpecial: "all" } as const;

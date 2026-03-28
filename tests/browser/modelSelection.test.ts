@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { buildModelMatchersLiteralForTest } from '../../src/browser/actions/modelSelection.js';
+import { describe, expect, it } from "vitest";
+import {
+  buildModelMatchersLiteralForTest,
+  buildModelSelectionExpressionForTest,
+} from "../../src/browser/actions/modelSelection.js";
 
 const expectContains = (arr: string[], value: string) => {
   expect(arr).toContain(value);

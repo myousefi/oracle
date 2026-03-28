@@ -1,9 +1,9 @@
-import type { EngineMode } from './engine.js';
-import type { ModelName } from '../oracle.js';
-import { isProModel } from '../oracle/modelResolver.js';
+import type { EngineMode } from "./engine.js";
+import type { ModelName } from "../oracle.js";
+import { isProModel } from "../oracle/modelResolver.js";
 
 export function shouldDetachSession({
-  // Params kept for future policy tweaks; currently only model/disableDetachEnv matter.
+  // Params kept for policy tweaks.
   engine,
   model,
   waitPreference,

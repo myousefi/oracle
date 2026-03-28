@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { resolveEngine, defaultWaitPreference, type EngineMode } from '../src/cli/engine.js';
+import { describe, expect, it } from "vitest";
+import { resolveEngine, defaultWaitPreference, type EngineMode } from "../src/cli/engine.js";
 
 // biome-ignore lint/style/useNamingConvention: env var names are uppercase with underscores
-const envWithKey = { ...process.env, OPENAI_API_KEY: 'sk-test' } as NodeJS.ProcessEnv;
+const envWithKey = { ...process.env, OPENAI_API_KEY: "sk-test" } as NodeJS.ProcessEnv;
 const envWithoutKey = { ...process.env } as NodeJS.ProcessEnv;
 delete envWithoutKey.OPENAI_API_KEY;
 delete envWithKey.ORACLE_ENGINE;
@@ -16,21 +16,21 @@ describe('resolveEngine', () => {
 
   it('uses browser when no flags are provided without OPENAI_API_KEY', () => {
     const engine = resolveEngine({ engine: undefined, browserFlag: false, env: envWithoutKey });
-    expect(engine).toBe<EngineMode>('browser');
+    expect(engine).toBe<EngineMode>("browser");
   });
 
-  it('respects ORACLE_ENGINE=browser even when OPENAI_API_KEY is set', () => {
+  it("respects ORACLE_ENGINE=browser even when OPENAI_API_KEY is set", () => {
     const env = { ...envWithKey } as NodeJS.ProcessEnv;
     // biome-ignore lint/complexity/useLiteralKeys: env var names are uppercase with underscores
-    env['ORACLE_ENGINE'] = 'browser';
+    env["ORACLE_ENGINE"] = "browser";
     const engine = resolveEngine({ engine: undefined, browserFlag: false, env });
-    expect(engine).toBe<EngineMode>('browser');
+    expect(engine).toBe<EngineMode>("browser");
   });
 
-  it('respects ORACLE_ENGINE=api even without OPENAI_API_KEY', () => {
+  it("respects ORACLE_ENGINE=api even without OPENAI_API_KEY", () => {
     const env = { ...envWithoutKey } as NodeJS.ProcessEnv;
     // biome-ignore lint/complexity/useLiteralKeys: env var names are uppercase with underscores
-    env['ORACLE_ENGINE'] = 'api';
+    env["ORACLE_ENGINE"] = "api";
     const engine = resolveEngine({ engine: undefined, browserFlag: false, env });
     expect(engine).toBe<EngineMode>('browser');
   });
@@ -40,9 +40,9 @@ describe('resolveEngine', () => {
     expect(engine).toBe<EngineMode>('browser');
   });
 
-  it('lets legacy --browser override everything', () => {
-    const engine = resolveEngine({ engine: 'api', browserFlag: true, env: envWithKey });
-    expect(engine).toBe<EngineMode>('browser');
+  it("lets legacy --browser override everything", () => {
+    const engine = resolveEngine({ engine: "api", browserFlag: true, env: envWithKey });
+    expect(engine).toBe<EngineMode>("browser");
   });
 });
 
