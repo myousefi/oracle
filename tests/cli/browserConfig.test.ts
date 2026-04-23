@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { buildBrowserConfig, resolveBrowserModelLabel } from "../../src/cli/browserConfig.js";
+import {
+  buildBrowserConfig,
+  resolveBrowserModelLabel,
+  resolveGrokBrowserLabel,
+} from "../../src/cli/browserConfig.js";
 
 describe('buildBrowserConfig', () => {
   test('uses defaults when optional flags omitted', async () => {
@@ -233,5 +237,19 @@ describe('resolveBrowserModelLabel', () => {
     expect(resolveBrowserModelLabel("  ChatGPT 5.1 Thinking ", "gpt-5.1")).toBe(
       "ChatGPT 5.1 Thinking",
     );
+  });
+});
+
+describe('resolveGrokBrowserLabel', () => {
+  test('uses Expert as the default Grok picker target', () => {
+    expect(resolveGrokBrowserLabel('grok')).toBe('Expert');
+    expect(resolveGrokBrowserLabel('grok-4.20')).toBe('Expert');
+  });
+
+  test('keeps explicit current Grok picker targets available', () => {
+    expect(resolveGrokBrowserLabel('grok 4.3 beta')).toBe('Grok 4.3 (beta)');
+    expect(resolveGrokBrowserLabel('grok fast')).toBe('Fast');
+    expect(resolveGrokBrowserLabel('grok heavy')).toBe('Heavy');
+    expect(resolveGrokBrowserLabel('grok auto')).toBe('Auto');
   });
 });

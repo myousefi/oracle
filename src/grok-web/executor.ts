@@ -250,26 +250,31 @@ function resolveGrokModelLabel(input: string): string {
   const normalized = normalizeModelLabel(input);
   if (!normalized) return '';
   if (normalized === 'auto' || normalized === 'auto choose' || normalized.includes('auto')) {
-    return 'auto chooses fast or expert';
+    return 'auto';
+  }
+  if (normalized === 'fast' || normalized.includes('fast')) return 'fast';
+  if (normalized.includes('heavy') || normalized.includes('team')) return 'heavy';
+  if (
+    normalized === 'grok-4.3' ||
+    normalized === 'grok 4.3' ||
+    normalized === '4.3' ||
+    normalized.includes('4.3') ||
+    normalized.includes('beta') ||
+    normalized.includes('early access')
+  ) {
+    return 'grok 4.3 (beta)';
   }
   if (
+    normalized === 'grok' ||
     normalized === 'grok-4.20' ||
     normalized === 'grok 4.20' ||
     normalized === '4.20' ||
     normalized.includes('4.20') ||
-    normalized.includes('4 agents') ||
-    normalized.includes('beta')
-  ) {
-    return 'grok 4.20 (beta) 4 agents';
-  }
-  if (
     normalized === 'thinking' ||
     normalized.includes('expert')
-) {
-    return 'expert thinks hard';
+  ) {
+    return 'expert';
   }
-  if (normalized.includes('heavy') || normalized.includes('team')) return 'heavy team of experts';
-  if (normalized === 'fast' || normalized.includes('fast')) return 'fast';
   return normalized;
 }
 

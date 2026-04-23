@@ -263,23 +263,29 @@ export function resolveGrokBrowserLabel(input: string | undefined): string | nul
   if (!normalized || !normalized.includes('grok')) {
     return null;
   }
-  if (normalized.includes('auto')) return 'Auto Chooses Fast or Expert';
-  if (normalized.includes('heavy') || normalized.includes('team')) return 'Heavy Team of experts';
+  if (normalized.includes('auto')) return 'Auto';
+  if (normalized.includes('fast')) return 'Fast';
+  if (normalized.includes('heavy') || normalized.includes('team')) return 'Heavy';
   if (
+    normalized === 'grok-4.3' ||
+    normalized === 'grok 4.3' ||
+    normalized === '4.3' ||
+    normalized.includes('4.3') ||
+    normalized.includes('beta') ||
+    normalized.includes('early access')
+  ) {
+    return 'Grok 4.3 (beta)';
+  }
+  if (
+    normalized === 'grok' ||
     normalized === 'grok-4.20' ||
     normalized === 'grok 4.20' ||
     normalized === '4.20' ||
     normalized.includes('4.20') ||
-    normalized.includes('4 agents') ||
-    normalized.includes('beta')
+    normalized.includes('thinking') ||
+    normalized.includes('expert')
   ) {
-    return 'Grok 4.20 (Beta) 4 Agents';
-  }
-  if (normalized.includes('thinking') || normalized.includes('expert')) {
-    return 'Expert Thinks hard';
-  }
-  if (normalized.includes('fast')) {
-    return 'Fast Quick responses by 4.1';
+    return 'Expert';
   }
   return null;
 }
