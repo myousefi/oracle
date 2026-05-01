@@ -13,6 +13,7 @@ export type KnownModelName =
   | 'gpt-5.2-instant'
   | 'gpt-5.2-pro'
   | 'gpt-5.2-thinking'
+  | 'gemini-3.1-pro'
   | 'gemini-3-pro'
   | 'claude-4.5-sonnet'
   | 'claude-4.1-opus'

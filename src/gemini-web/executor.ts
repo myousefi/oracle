@@ -1,10 +1,16 @@
 import path from 'node:path';
 import type { BrowserRunOptions, BrowserRunResult, BrowserLogger, CookieParam } from '../browser/types.js';
 import { getCookies } from '@steipete/sweet-cookie';
+import { runProviderDomFlow } from '../browser/providerDomFlow.js';
+import { geminiDeepThinkDomProvider } from '../browser/providers/index.js';
+import { delay } from '../browser/utils.js';
 import { runGeminiWebWithFallback, saveFirstGeminiImageFromOutput } from './client.js';
 import type { GeminiWebModelId } from './client.js';
 import type { GeminiWebOptions, GeminiWebResponse } from './types.js';
 import { runGeminiDeepResearchBrowser } from './deepResearchExecutor.js';
+import { openGeminiBrowserSession } from './browserSessionManager.js';
+import { selectGeminiExecutionMode } from './executionMode.js';
+import type { IGeminiExecutionClient } from './executionClients.js';
 
 const GEMINI_COOKIE_NAMES = [
   "__Secure-1PSID",

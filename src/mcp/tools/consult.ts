@@ -24,7 +24,7 @@ async function readSessionLogTail(sessionId: string, maxBytes: number): Promise<
 import { performSessionRun } from '../../cli/sessionRunner.js';
 import { CHATGPT_URL } from '../../browser/constants.js';
 import { consultInputSchema } from '../types.js';
-import { loadUserConfig } from '../../config.js';
+import { loadUserConfig, type UserConfig } from '../../config.js';
 import { resolveNotificationSettings } from '../../cli/notifier.js';
 import { mapModelToBrowserLabel, resolveBrowserModelLabel, resolveGrokBrowserLabel } from '../../cli/browserConfig.js';
 

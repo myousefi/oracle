@@ -170,8 +170,10 @@ oracle --engine browser \
 | `-p, --prompt <text>` | Required prompt. |
 | `-f, --file <paths...>` | Attach files/dirs (globs + `!` excludes). |
 | `-e, --engine <api\|browser>` | Choose API or browser (browser is experimental). |
-| `-m, --model <name>` | Built-ins (`gpt-5.4-pro` default, `gpt-5.4`, `gpt-5.4-thinking`, `gpt-5.3-instant`, `gpt-5.1-codex`, `gemini-3-pro`, `claude-4.5-sonnet`, `claude-4.1-opus`) plus legacy GPT-5.2/5.1 aliases and any OpenRouter id (e.g., `minimax/minimax-m2`, `openai/gpt-4o-mini`). |
+| `-m, --model <name>` | Built-ins (`gpt-5.4-pro` default, `gpt-5.4`, `gpt-5.4-thinking`, `gpt-5.3-instant`, `gpt-5.1-codex`, `gemini-3.1-pro`, `gemini-3-pro`, `grok-4.20`, `claude-4.5-sonnet`, `claude-4.1-opus`) plus legacy GPT-5.2/5.1 aliases and any OpenRouter id (e.g., `minimax/minimax-m2`, `openai/gpt-4o-mini`). |
 | `--models <list>` | Comma-separated API models (mix built-ins and OpenRouter ids) for multi-model runs. |
+| `--followup <sessionId\|responseId>` | Continue an OpenAI/Azure Responses API run from a stored oracle session or `resp_...` response id. |
+| `--followup-model <model>` | For multi-model OpenAI/Azure parent sessions, choose which model response to continue from. |
 | `--base-url <url>` | Point API runs at LiteLLM/Azure/OpenRouter/etc. |
 | `--chatgpt-url <url>` | Target a ChatGPT workspace/folder (browser). |
 | `--browser-model-strategy <select\|current\|ignore>` | Control ChatGPT model selection in browser mode (current keeps the active model; ignore skips the picker). |

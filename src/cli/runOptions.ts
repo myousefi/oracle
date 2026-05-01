@@ -7,6 +7,7 @@ import { normalizeModelOption, inferModelFromLabel, normalizeBaseUrl } from './o
 import { resolveGeminiModelId } from '../oracle/gemini.js';
 import { PromptValidationError } from '../oracle/errors.js';
 import { normalizeChatGptModelForBrowser } from './browserConfig.js';
+import { resolveConfiguredMaxFileSizeBytes } from './fileSize.js';
 
 export interface ResolveRunOptionsInput {
   prompt: string;

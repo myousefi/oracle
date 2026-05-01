@@ -66,6 +66,16 @@ export { CHATGPT_URL, DEFAULT_MODEL_STRATEGY, DEFAULT_MODEL_TARGET } from './con
 export { parseDuration, delay, normalizeChatgptUrl, isTemporaryChatUrl } from './utils.js';
 export { ensureBrowserLoginProfile } from './login.js';
 
+function shouldPreserveBrowserOnError(error: Error, headless?: boolean): boolean {
+  if (headless) {
+    return false;
+  }
+  if (!(error instanceof BrowserAutomationError)) {
+    return false;
+  }
+  return error.details?.stage === 'cloudflare-challenge';
+}
+
 export async function runBrowserMode(options: BrowserRunOptions): Promise<BrowserRunResult> {
   const promptText = options.prompt?.trim();
   if (!promptText) {

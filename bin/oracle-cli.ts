@@ -1485,6 +1485,9 @@ async function runRootCommand(options: CliOptions): Promise<void> {
   }
 
   const cliModelArg = normalizeModelOption(options.model) || DEFAULT_MODEL;
+  const normalizedMultiModels: ModelName[] = multiModelProvided
+    ? (options.models!.map((entry) => normalizeModelOption(entry)).filter(Boolean) as ModelName[])
+    : [];
   const resolvedModelCandidate: ModelName = inferModelFromLabel(cliModelArg);
   const primaryModelCandidate = resolvedModelCandidate;
   const isGemini = primaryModelCandidate.startsWith('gemini');
