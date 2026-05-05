@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import inquirer, { type DistinctQuestion } from "inquirer";
+import inquirer from "inquirer";
 import kleur from "kleur";
 import path from "node:path";
 import os from "node:os";
@@ -24,7 +24,6 @@ import { formatSessionTableHeader, formatSessionTableRow } from "../sessionTable
 import { buildBrowserConfig, resolveBrowserModelLabel } from "../browserConfig.js";
 import { resolveNotificationSettings } from "../notifier.js";
 import { loadUserConfig, type UserConfig } from "../../config.js";
-import { resolveConfiguredMaxFileSizeBytes } from "../fileSize.js";
 import { formatTokenCount } from "../../oracle/runUtils.js";
 
 const isTty = (): boolean => Boolean(process.stdout.isTTY && chalk.level > 0);
@@ -343,7 +342,7 @@ interface WizardAnswers {
 
 async function askOracleFlow(version: string, userConfig: UserConfig): Promise<void> {
   const modelChoices = Object.keys(MODEL_CONFIGS) as ModelName[];
-  const mode: SessionMode = 'browser';
+  const mode: SessionMode = "browser";
 
   const wizardQuestions = [
     {
@@ -364,9 +363,9 @@ async function askOracleFlow(version: string, userConfig: UserConfig): Promise<v
       choices: modelChoices,
     },
     {
-      name: 'files',
-      type: 'input',
-      message: 'Files or globs to attach (comma-separated, optional):',
+      name: "files",
+      type: "input",
+      message: "Files or globs to attach (comma-separated, optional):",
       filter: (value: string) =>
         value
           .split(",")
@@ -374,15 +373,15 @@ async function askOracleFlow(version: string, userConfig: UserConfig): Promise<v
           .filter(Boolean),
     },
     {
-      name: 'chromeProfile',
-      type: 'input',
-      message: 'Chrome profile to reuse cookies from:',
-      default: 'Default',
+      name: "chromeProfile",
+      type: "input",
+      message: "Chrome profile to reuse cookies from:",
+      default: "Default",
     },
     {
-      name: 'chromeCookiePath',
-      type: 'input',
-      message: 'Cookie DB path (Chromium/Edge, optional):',
+      name: "chromeCookiePath",
+      type: "input",
+      message: "Cookie DB path (Chromium/Edge, optional):",
     },
     {
       name: "hideWindow",
@@ -399,7 +398,7 @@ async function askOracleFlow(version: string, userConfig: UserConfig): Promise<v
   ] as const;
 
   const answers = await inquirer.prompt<WizardAnswers & { promptInput: string }>(
-    wizardQuestions as unknown as Parameters<(typeof inquirer)['prompt']>[0],
+    wizardQuestions as unknown as Parameters<(typeof inquirer)["prompt"]>[0],
   );
 
   const prompt = await resolvePromptInput(answers.promptInput);
@@ -411,7 +410,9 @@ async function askOracleFlow(version: string, userConfig: UserConfig): Promise<v
     ? `${prompt.trim()}\n${userConfig.promptSuffix}`
     : prompt;
   await sessionStore.ensureStorage();
-  await pruneOldSessions(userConfig.sessionRetentionHours, (message) => console.log(chalk.dim(message)));
+  await pruneOldSessions(userConfig.sessionRetentionHours, (message) =>
+    console.log(chalk.dim(message)),
+  );
   const runOptions: RunOracleOptions = {
     prompt: promptWithSuffix,
     model: answers.model,
@@ -444,7 +445,7 @@ async function askOracleFlow(version: string, userConfig: UserConfig): Promise<v
           browserHideWindow: answers.hideWindow,
           browserKeepBrowser: answers.keepBrowser,
           browserModelLabel:
-            answers.model.startsWith('gpt-') && !answers.model.includes('codex')
+            answers.model.startsWith("gpt-") && !answers.model.includes("codex")
               ? resolveBrowserModelLabel(undefined, answers.model)
               : undefined,
           model: answers.model,

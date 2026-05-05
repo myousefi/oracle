@@ -25,8 +25,8 @@ describe("runOracle no-file tip", () => {
     const client = new MockClient(mockStream);
     await runOracle(
       {
-        prompt: 'hello',
-        model: 'gpt-5.4-pro',
+        prompt: "hello",
+        model: "gpt-5.4-pro",
         search: false,
         background: false,
       },
@@ -64,10 +64,12 @@ describe("api key logging", () => {
       },
     );
 
-    const combined = logs.join('\n');
-    expect(combined).toContain('Calling gpt-5.1-pro (API: gpt-5.4-pro)');
-    expect(combined).toContain('Resolved model: gpt-5.1-pro → gpt-5.4-pro');
-    expect(combined).toContain('Note: `gpt-5.1-pro` is a stable CLI alias; OpenAI API uses `gpt-5.4-pro`');
+    const combined = logs.join("\n");
+    expect(combined).toContain("Calling gpt-5.1-pro (API: gpt-5.5-pro)");
+    expect(combined).toContain("Resolved model: gpt-5.1-pro → gpt-5.5-pro");
+    expect(combined).toContain(
+      "Note: `gpt-5.1-pro` is a stable CLI alias; OpenAI API uses `gpt-5.5-pro`",
+    );
 
     const headerIndex = logs.findIndex((line) => line.includes("Calling gpt-5.1-pro"));
     const noteIndex = logs.findIndex((line) => line.includes("stable CLI alias"));
@@ -106,8 +108,8 @@ describe("api key logging", () => {
     const logs: string[] = [];
     await runOracle(
       {
-        prompt: 'Key log test',
-        model: 'gpt-5.4-pro',
+        prompt: "Key log test",
+        model: "gpt-5.4-pro",
         background: false,
         verbose: true,
       },
@@ -144,9 +146,11 @@ describe("api key logging", () => {
       },
     );
 
-    const combined = logs.join('\n');
-    expect(combined).toContain('Using apiKey option=sk-s****1234 for model gpt-5.1-pro (API: gpt-5.4-pro)');
-    expect(combined).not.toContain('supersecret');
+    const combined = logs.join("\n");
+    expect(combined).toContain(
+      "Using apiKey option=sk-s****1234 for model gpt-5.1-pro (API: gpt-5.5-pro)",
+    );
+    expect(combined).not.toContain("supersecret");
   });
 
   test("logs masked GEMINI_API_KEY when using gemini model in verbose mode", async () => {
@@ -156,7 +160,7 @@ describe("api key logging", () => {
     await runOracle(
       {
         prompt: "Key log test Gemini",
-        model: "gemini-3-pro",
+        model: "gemini-3.1-pro",
         background: false,
         verbose: true,
       },
@@ -169,7 +173,7 @@ describe("api key logging", () => {
     );
 
     const combined = logs.join("\n");
-    expect(combined).toContain("Using GEMINI_API_KEY=sk-g****9999 for model gemini-3-pro");
+    expect(combined).toContain("Using GEMINI_API_KEY=sk-g****9999 for model gemini-3.1-pro");
     expect(combined).not.toContain("gemini-secret");
   });
 
@@ -182,8 +186,8 @@ describe("api key logging", () => {
       await expect(
         runOracle(
           {
-            prompt: 'Needs key',
-            model: 'gpt-5.4-pro',
+            prompt: "Needs key",
+            model: "gpt-5.4-pro",
             background: false,
           },
           {
@@ -216,7 +220,7 @@ describe("api key logging", () => {
         runOracle(
           {
             prompt: "Needs gemini key",
-            model: "gemini-3-pro",
+            model: "gemini-3.1-pro",
             background: false,
           },
           {
@@ -244,7 +248,7 @@ describe("api key logging", () => {
     const client = new MockClient(stream);
     const logs: string[] = [];
     await runOracle(
-      { prompt: 'Summarize', model: 'gpt-5.4-pro', sessionId: 'abc123', background: false },
+      { prompt: "Summarize", model: "gpt-5.4-pro", sessionId: "abc123", background: false },
       {
         apiKey: "sk-test",
         client,
@@ -270,7 +274,7 @@ describe("api key logging", () => {
     const logs: string[] = [];
     const writes: string[] = [];
     await runOracle(
-      { prompt: 'hi', model: 'gpt-5.4-pro', verbose: true, background: false },
+      { prompt: "hi", model: "gpt-5.4-pro", verbose: true, background: false },
       {
         apiKey: "sk-test-1234",
         client,
@@ -307,7 +311,7 @@ describe("api key logging", () => {
 
     logs.length = 0;
     await runOracle(
-      { prompt: 'hi', model: 'gpt-5.4-pro', background: false },
+      { prompt: "hi", model: "gpt-5.4-pro", background: false },
       {
         apiKey: "sk-test",
         client,
@@ -339,7 +343,7 @@ describe("api key logging", () => {
     const logs: string[] = [];
     const writes: string[] = [];
     await runOracle(
-      { prompt: 'hi', model: 'gpt-5.4-pro', suppressAnswerHeader: true, background: false },
+      { prompt: "hi", model: "gpt-5.4-pro", suppressAnswerHeader: true, background: false },
       {
         apiKey: "sk-test-1234",
         client,
@@ -371,7 +375,7 @@ describe("api key logging", () => {
     const writes: string[] = [];
 
     await runOracle(
-      { prompt: 'hi', model: 'gpt-5.4-pro', background: false },
+      { prompt: "hi", model: "gpt-5.4-pro", background: false },
       {
         apiKey: "sk-test-1234",
         client,
@@ -396,7 +400,7 @@ describe("api key logging", () => {
     const logs: string[] = [];
     const writes: string[] = [];
     await runOracle(
-      { prompt: 'Greeting', model: 'gpt-5.4-pro', verbose: true, background: false },
+      { prompt: "Greeting", model: "gpt-5.4-pro", verbose: true, background: false },
       {
         apiKey: "sk-test",
         client,
@@ -420,8 +424,8 @@ describe("api key logging", () => {
     const logs: string[] = [];
     await runOracle(
       {
-        prompt: 'Verbose tokens',
-        model: 'gpt-5.4-pro',
+        prompt: "Verbose tokens",
+        model: "gpt-5.4-pro",
         background: false,
         verbose: true,
       },
@@ -448,8 +452,8 @@ describe("api key logging", () => {
     const logs: string[] = [];
     await runOracle(
       {
-        prompt: 'Short tokens',
-        model: 'gpt-5.4-pro',
+        prompt: "Short tokens",
+        model: "gpt-5.4-pro",
         background: false,
         verbose: false,
       },
@@ -504,8 +508,8 @@ describe("api key logging", () => {
     const logs: string[] = [];
     await runOracle(
       {
-        prompt: 'Greeting',
-        model: 'gpt-5.4-pro',
+        prompt: "Greeting",
+        model: "gpt-5.4-pro",
         background: false,
         verbose: true,
       },

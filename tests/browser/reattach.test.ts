@@ -111,19 +111,19 @@ describe("resumeBrowserSession", () => {
     expect(recoverSession).toHaveBeenCalled();
   });
 
-  test('reopens the intended conversation when only tabUrl provides the conversation id', async () => {
+  test("reopens the intended conversation when only tabUrl provides the conversation id", async () => {
     const runtime = {
       chromePort: 51559,
-      chromeHost: '127.0.0.1',
-      tabUrl: 'https://chatgpt.com/c/abc',
+      chromeHost: "127.0.0.1",
+      tabUrl: "https://chatgpt.com/c/abc",
     };
-    let currentUrl = 'https://chatgpt.com/c/wrong';
+    let currentUrl = "https://chatgpt.com/c/wrong";
     let pendingUrl: string | null = null;
-    const listTargets = vi.fn(async () =>
-      [{ targetId: 'target-1', type: 'page', url: currentUrl }] satisfies FakeTarget[],
+    const listTargets = vi.fn(
+      async () => [{ targetId: "target-1", type: "page", url: currentUrl }] satisfies FakeTarget[],
     ) as unknown as () => Promise<FakeTarget[]>;
     const evaluate = vi.fn(async ({ expression }: { expression: string }) => {
-      if (expression === 'location.href') {
+      if (expression === "location.href") {
         const value = currentUrl;
         if (pendingUrl) {
           currentUrl = pendingUrl;
@@ -131,116 +131,115 @@ describe("resumeBrowserSession", () => {
         }
         return { result: { value } };
       }
-      if (expression === '1+1') {
+      if (expression === "1+1") {
         return { result: { value: 2 } };
       }
       if (expression.includes('const conversationId = "abc"')) {
         pendingUrl = runtime.tabUrl;
         return { result: { value: { ok: true, href: runtime.tabUrl, count: 1 } } };
       }
-      if (expression.includes('document.querySelectorAll')) {
+      if (expression.includes("document.querySelectorAll")) {
         return { result: { value: 1 } };
       }
       return { result: { value: null } };
     });
-    const connect = vi.fn(async () =>
-      ({
-        Runtime: { enable: vi.fn(), evaluate },
-        DOM: { enable: vi.fn() },
-        close: vi.fn(async () => {}),
-      } satisfies FakeClient),
+    const connect = vi.fn(
+      async () =>
+        ({
+          Runtime: { enable: vi.fn(), evaluate },
+          DOM: { enable: vi.fn() },
+          close: vi.fn(async () => {}),
+        }) satisfies FakeClient,
     ) as unknown as (options?: unknown) => Promise<ChromeClient>;
     const waitForAssistantResponse = vi.fn(async () => ({
-      text: 'Recovered from the right conversation',
-      html: '',
-      meta: { messageId: 'm1', turnId: 'conversation-turn-1' },
+      text: "Recovered from the right conversation",
+      html: "",
+      meta: { messageId: "m1", turnId: "conversation-turn-1" },
     }));
-    const captureAssistantMarkdown = vi.fn(async () => 'Recovered from the right conversation');
+    const captureAssistantMarkdown = vi.fn(async () => "Recovered from the right conversation");
     const logger = vi.fn() as BrowserLogger;
     logger.verbose = true;
 
-    const result = await resumeBrowserSession(
-      runtime,
-      { timeoutMs: 2000 },
-      logger,
-      { listTargets, connect, waitForAssistantResponse, captureAssistantMarkdown },
-    );
+    const result = await resumeBrowserSession(runtime, { timeoutMs: 2000 }, logger, {
+      listTargets,
+      connect,
+      waitForAssistantResponse,
+      captureAssistantMarkdown,
+    });
 
-    expect(result.answerMarkdown).toContain('Recovered from the right conversation');
+    expect(result.answerMarkdown).toContain("Recovered from the right conversation");
     expect(
       evaluate.mock.calls.some(
         ([params]) =>
-          typeof params?.expression === 'string' && params.expression.includes('const conversationId = "abc"'),
+          typeof params?.expression === "string" &&
+          params.expression.includes('const conversationId = "abc"'),
       ),
     ).toBe(true);
   });
 
-  test('recovers the original assistant turn by matching the stored prompt before reading the latest reply', async () => {
+  test("recovers the original assistant turn by matching the stored prompt before reading the latest reply", async () => {
     const runtime = {
       chromePort: 51559,
-      chromeHost: '127.0.0.1',
-      tabUrl: 'https://chatgpt.com/c/chapter-1',
+      chromeHost: "127.0.0.1",
+      tabUrl: "https://chatgpt.com/c/chapter-1",
     };
-    const listTargets = vi.fn(async () =>
-      [{ targetId: 'target-1', type: 'page', url: runtime.tabUrl }] satisfies FakeTarget[],
+    const listTargets = vi.fn(
+      async () =>
+        [{ targetId: "target-1", type: "page", url: runtime.tabUrl }] satisfies FakeTarget[],
     ) as unknown as () => Promise<FakeTarget[]>;
     const evaluate = vi.fn(async ({ expression }: { expression: string }) => {
-      if (expression === 'location.href') {
+      if (expression === "location.href") {
         return { result: { value: runtime.tabUrl } };
       }
-      if (expression === '1+1') {
+      if (expression === "1+1") {
         return { result: { value: 2 } };
       }
-      if (expression.includes('promptNeedles') && expression.includes('chapter 1')) {
+      if (expression.includes("promptNeedles") && expression.includes("chapter 1")) {
         return {
           result: {
             value: {
-              text: 'Recovered chapter 1 body',
-              html: '<p>Recovered chapter 1 body</p>',
-              messageId: 'assistant-original',
-              turnId: 'assistant-original-turn',
+              text: "Recovered chapter 1 body",
+              html: "<p>Recovered chapter 1 body</p>",
+              messageId: "assistant-original",
+              turnId: "assistant-original-turn",
             },
           },
         };
       }
       return { result: { value: null } };
     });
-    const connect = vi.fn(async () =>
-      ({
-        Runtime: { enable: vi.fn(), evaluate },
-        DOM: { enable: vi.fn() },
-        close: vi.fn(async () => {}),
-      } satisfies FakeClient),
+    const connect = vi.fn(
+      async () =>
+        ({
+          Runtime: { enable: vi.fn(), evaluate },
+          DOM: { enable: vi.fn() },
+          close: vi.fn(async () => {}),
+        }) satisfies FakeClient,
     ) as unknown as (options?: unknown) => Promise<ChromeClient>;
     const waitForAssistantResponse = vi.fn(async () => ({
-      text: 'Latest follow-up reply',
-      html: '',
-      meta: { messageId: 'm-latest', turnId: 'conversation-turn-latest' },
+      text: "Latest follow-up reply",
+      html: "",
+      meta: { messageId: "m-latest", turnId: "conversation-turn-latest" },
     }));
-    const captureAssistantMarkdown = vi.fn(async () => 'Recovered chapter 1 markdown');
+    const captureAssistantMarkdown = vi.fn(async () => "Recovered chapter 1 markdown");
     const logger = vi.fn() as BrowserLogger;
     logger.verbose = true;
 
-    const result = await resumeBrowserSession(
-      runtime,
-      { timeoutMs: 2000 },
-      logger,
-      {
-        listTargets,
-        connect,
-        waitForAssistantResponse,
-        captureAssistantMarkdown,
-        promptText:
-          'You are writing a serious technical book. Now write Chapter 1: What Serverless GPU Inference Must Ultimately Reduce To.',
-      },
-    );
+    const result = await resumeBrowserSession(runtime, { timeoutMs: 2000 }, logger, {
+      listTargets,
+      connect,
+      waitForAssistantResponse,
+      captureAssistantMarkdown,
+      promptText:
+        "You are writing a serious technical book. Now write Chapter 1: What Serverless GPU Inference Must Ultimately Reduce To.",
+    });
 
-    expect(result.answerMarkdown).toBe('Recovered chapter 1 markdown');
+    expect(result.answerMarkdown).toBe("Recovered chapter 1 markdown");
     expect(result.response).toMatchObject({
-      status: 'completed',
-      messageId: 'assistant-original',
-      turnId: 'assistant-original-turn',
-      conversationId: 'chapter-1',
+      status: "completed",
+      messageId: "assistant-original",
+      turnId: "assistant-original-turn",
+      conversationId: "chapter-1",
     });
     expect(waitForAssistantResponse).not.toHaveBeenCalled();
   });

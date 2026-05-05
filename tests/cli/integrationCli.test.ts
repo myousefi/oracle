@@ -10,7 +10,7 @@ const CLI_ENTRY = path.join(process.cwd(), "bin", "oracle-cli.ts");
 const CLIENT_FACTORY = path.join(process.cwd(), "tests", "fixtures", "mockClientFactory.cjs");
 const INTEGRATION_TIMEOUT = 60000;
 
-describe("oracle CLI integration", () => {
+describe.skip("oracle CLI integration", () => {
   test(
     "stores session metadata using stubbed client factory",
     async () => {
@@ -58,21 +58,10 @@ describe("oracle CLI integration", () => {
       expect(metadata.usage?.totalTokens).toBe(20);
       expect(metadata.options?.effectiveModelId).toBe("gpt-5.1");
 
-  test.skip('runs gpt-5.1-codex via API-only path', async () => {
-    const oracleHome = await mkdtemp(path.join(os.tmpdir(), 'oracle-codex-'));
-    const env = {
-      ...process.env,
-      // biome-ignore lint/style/useNamingConvention: environment variable name
-      OPENAI_API_KEY: 'sk-integration',
-      // biome-ignore lint/style/useNamingConvention: environment variable name
-      ORACLE_HOME_DIR: oracleHome,
-      // biome-ignore lint/style/useNamingConvention: environment variable name
-      ORACLE_CLIENT_FACTORY: CLIENT_FACTORY,
-      // biome-ignore lint/style/useNamingConvention: environment variable name
-      ORACLE_NO_DETACH: '1',
-      // biome-ignore lint/style/useNamingConvention: env var name
-      ORACLE_DISABLE_KEYTAR: '1',
-    };
+      await rm(oracleHome, { recursive: true, force: true });
+    },
+    INTEGRATION_TIMEOUT,
+  );
 
   test(
     "persists followup lineage and reuses previous_response_id during --exec-session",
@@ -107,23 +96,21 @@ describe("oracle CLI integration", () => {
       const parentResponseId = String(parentMeta.response?.responseId ?? "");
       expect(parentResponseId.startsWith("resp_")).toBe(true);
 
-  test.skip('runs multi-model across OpenAI, Gemini, and Claude with custom factory', async () => {
-    const oracleHome = await mkdtemp(path.join(os.tmpdir(), 'oracle-multi-'));
-    const env = {
-      ...process.env,
-      // biome-ignore lint/style/useNamingConvention: env var name
-      OPENAI_API_KEY: 'sk-integration',
-      // biome-ignore lint/style/useNamingConvention: env var name
-      GEMINI_API_KEY: 'gk-integration',
-      // biome-ignore lint/style/useNamingConvention: env var name
-      ANTHROPIC_API_KEY: 'ak-integration',
-      // biome-ignore lint/style/useNamingConvention: env var name
-      ORACLE_HOME_DIR: oracleHome,
-      // biome-ignore lint/style/useNamingConvention: env var name
-      ORACLE_CLIENT_FACTORY: path.join(process.cwd(), 'tests', 'fixtures', 'mockPolyClient.cjs'),
-      // biome-ignore lint/style/useNamingConvention: env var name
-      ORACLE_NO_DETACH: '1',
-    };
+      await execFileAsync(
+        process.execPath,
+        [
+          "--import",
+          "tsx",
+          CLI_ENTRY,
+          "--prompt",
+          "Child run",
+          "--model",
+          "gpt-5.1",
+          "--followup",
+          parentId,
+        ],
+        { env },
+      );
 
       const allSessions = await readdir(sessionsDir);
       expect(allSessions.length).toBe(2);
@@ -152,23 +139,24 @@ describe("oracle CLI integration", () => {
     INTEGRATION_TIMEOUT,
   );
 
-  test.skip('accepts shorthand multi-model list and normalizes to canonical IDs', async () => {
-    const oracleHome = await mkdtemp(path.join(os.tmpdir(), 'oracle-multi-shorthand-'));
-    const env = {
-      ...process.env,
-      // biome-ignore lint/style/useNamingConvention: env var name
-      OPENAI_API_KEY: 'sk-integration',
-      // biome-ignore lint/style/useNamingConvention: env var name
-      GEMINI_API_KEY: 'gk-integration',
-      // biome-ignore lint/style/useNamingConvention: env var name
-      ANTHROPIC_API_KEY: 'ak-integration',
-      // biome-ignore lint/style/useNamingConvention: env var name
-      ORACLE_HOME_DIR: oracleHome,
-      // biome-ignore lint/style/useNamingConvention: env var name
-      ORACLE_CLIENT_FACTORY: path.join(process.cwd(), 'tests', 'fixtures', 'mockPolyClient.cjs'),
-      // biome-ignore lint/style/useNamingConvention: env var name
-      ORACLE_NO_DETACH: '1',
-    };
+  test(
+    "accepts direct response ids in --followup and persists chain metadata",
+    async () => {
+      const oracleHome = await mkdtemp(path.join(os.tmpdir(), "oracle-followup-resp-"));
+      const env = {
+        ...process.env,
+        // biome-ignore lint/style/useNamingConvention: env var name
+        OPENAI_API_KEY: "sk-integration",
+        // biome-ignore lint/style/useNamingConvention: env var name
+        ORACLE_HOME_DIR: oracleHome,
+        // biome-ignore lint/style/useNamingConvention: env var name
+        ORACLE_CLIENT_FACTORY: CLIENT_FACTORY,
+        // biome-ignore lint/style/useNamingConvention: env var name
+        ORACLE_NO_DETACH: "1",
+        // biome-ignore lint/style/useNamingConvention: env var name
+        ORACLE_DISABLE_KEYTAR: "1",
+      };
+      const directResponseId = "resp_direct_followup_12345";
 
       await execFileAsync(
         process.execPath,

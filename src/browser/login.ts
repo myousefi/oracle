@@ -1,18 +1,20 @@
-import path from 'node:path';
-import { mkdir } from 'node:fs/promises';
-import type { BrowserLogger } from './types.js';
-import { resolveBrowserConfig } from './config.js';
-import { launchChrome, connectWithNewTab } from './chromeLifecycle.js';
+import path from "node:path";
+import { mkdir } from "node:fs/promises";
+import type { BrowserLogger } from "./types.js";
+import { resolveBrowserConfig } from "./config.js";
+import { launchChrome, connectWithNewTab } from "./chromeLifecycle.js";
 import {
   cleanupStaleProfileState,
-  readChromePid,
   readDevToolsPort,
   verifyDevToolsReachable,
   writeChromePid,
   writeDevToolsActivePort,
-} from './profileState.js';
-import { CHATGPT_URL } from './constants.js';
-import { DEFAULT_ORACLE_BROWSER_DEBUG_PORT, DEFAULT_ORACLE_BROWSER_PROFILE_DIR } from './profileDefaults.js';
+} from "./profileState.js";
+import { CHATGPT_URL } from "./constants.js";
+import {
+  DEFAULT_ORACLE_BROWSER_DEBUG_PORT,
+  DEFAULT_ORACLE_BROWSER_PROFILE_DIR,
+} from "./profileDefaults.js";
 
 export interface BrowserLoginOptions {
   url?: string;
@@ -43,12 +45,16 @@ export async function ensureBrowserLoginProfile({
   if (existingPort) {
     const reachable = await verifyDevToolsReachable({ port: existingPort });
     if (reachable.ok) {
-      logger(`Found running Chrome for login profile at ${resolvedProfileDir} (port ${existingPort}).`);
+      logger(
+        `Found running Chrome for login profile at ${resolvedProfileDir} (port ${existingPort}).`,
+      );
       await openLoginTab(existingPort, url, logger);
       return { port: existingPort, profileDir: resolvedProfileDir, reused: true };
     }
-    logger(`DevTools port ${existingPort} unreachable (${reachable.error}); launching fresh Chrome.`);
-    await cleanupStaleProfileState(resolvedProfileDir, logger, { lockRemovalMode: 'never' });
+    logger(
+      `DevTools port ${existingPort} unreachable (${reachable.error}); launching fresh Chrome.`,
+    );
+    await cleanupStaleProfileState(resolvedProfileDir, logger, { lockRemovalMode: "never" });
   }
 
   const resolvedConfig = resolveBrowserConfig({

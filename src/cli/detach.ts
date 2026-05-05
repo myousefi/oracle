@@ -15,9 +15,10 @@ export function shouldDetachSession({
   disableDetachEnv: boolean;
 }): boolean {
   if (disableDetachEnv) return false;
+  if (waitPreference) return false;
   // Allow explicit --no-wait for browser runs; otherwise keep them inline so failures surface.
-  if (engine === 'browser') return waitPreference === false;
+  if (engine === "browser") return waitPreference === false;
   // Only Pro-tier API runs should start detached by default.
-  if (isProModel(model) && engine === 'api') return true;
+  if (isProModel(model) && engine === "api") return true;
   return false;
 }

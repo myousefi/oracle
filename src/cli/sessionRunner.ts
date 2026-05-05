@@ -130,7 +130,7 @@ export async function performSessionRun({
           config: browserConfig,
           runtime: result.runtime,
         },
-        response: { status: 'completed', ...result.response },
+        response: { status: "completed", ...result.response },
         transport: undefined,
         error: undefined,
       });
@@ -718,7 +718,11 @@ async function autoReattachUntilComplete({
             conversationId: result.response?.conversationId ?? runtime.conversationId,
           },
         },
-        response: { status: 'completed', ...(sessionMeta.response ?? {}), ...(result.response ?? {}) },
+        response: {
+          status: "completed",
+          ...(sessionMeta.response ?? {}),
+          ...(result.response ?? {}),
+        },
         error: undefined,
         transport: undefined,
       });

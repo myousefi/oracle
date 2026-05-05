@@ -65,7 +65,7 @@ describe("gemini-web uploads", () => {
       const result = await runGeminiWebOnce({
         prompt: "Describe the attachments.",
         files: [imagePath, textPath],
-        model: "gemini-3-pro",
+        model: "gemini-3.1-pro",
         cookieMap: { sid: "cookie" },
       });
 

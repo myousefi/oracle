@@ -64,8 +64,10 @@ async function runApiDryRun(
   const readFilesImpl = deps.readFilesImpl ?? readFiles;
   const files = await readFilesImpl(runOptions.file ?? [], { cwd });
   const systemPrompt = runOptions.system?.trim() || DEFAULT_SYSTEM_PROMPT;
-  const combinedPrompt = buildPrompt(runOptions.prompt ?? '', files, cwd);
-  const modelConfig = isKnownModel(runOptions.model) ? MODEL_CONFIGS[runOptions.model] : MODEL_CONFIGS['gpt-5.4'];
+  const combinedPrompt = buildPrompt(runOptions.prompt ?? "", files, cwd);
+  const modelConfig = isKnownModel(runOptions.model)
+    ? MODEL_CONFIGS[runOptions.model]
+    : MODEL_CONFIGS["gpt-5.5"];
   const tokenizer = modelConfig.tokenizer;
   const estimatedInputTokens = tokenizer(
     [

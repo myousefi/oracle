@@ -64,6 +64,7 @@ Oracle keeps a stable CLI-facing model set, but some names are aliases for the c
 - `gpt-5.2` → `gpt-5.4` (API)
 
 Notes:
+
 - `gpt-5.1-pro` is a **CLI alias** for “the current Pro API model” — Oracle resolves it to `gpt-5.4-pro`.
 - If you want the classic Pro tier explicitly, use `gpt-5-pro`.
 

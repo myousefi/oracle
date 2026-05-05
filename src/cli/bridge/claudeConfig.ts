@@ -20,8 +20,7 @@ export async function runBridgeClaudeConfig(options: BridgeClaudeConfigCliOption
   const snippet = formatClaudeMcpConfig({
     oracleHomeDir: process.env.ORACLE_HOME_DIR ?? path.join(os.homedir(), ".oracle-local"),
     browserProfileDir:
-      process.env.ORACLE_BROWSER_PROFILE_DIR ??
-      path.join(os.homedir(), '.oracle-local', 'chrome'),
+      process.env.ORACLE_BROWSER_PROFILE_DIR ?? path.join(os.homedir(), ".oracle-local", "chrome"),
     remoteHost: resolved.host,
     remoteToken: resolved.token,
     includeToken: Boolean(options.printToken),

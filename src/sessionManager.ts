@@ -1,13 +1,18 @@
-import path from 'node:path';
-import fs from 'node:fs/promises';
-import { createWriteStream } from 'node:fs';
-import type { WriteStream } from 'node:fs';
-import net from 'node:net';
-import type { BrowserModelStrategy, BrowserReport, CookieParam } from './browser/types.js';
-import type { TransportFailureReason, AzureOptions, ModelName, ThinkingTimeLevel } from './oracle.js';
-import { DEFAULT_MODEL, formatElapsed } from './oracle.js';
-import { safeModelSlug } from './oracle/modelResolver.js';
-import { getOracleHomeDir } from './oracleHome.js';
+import path from "node:path";
+import fs from "node:fs/promises";
+import { createWriteStream } from "node:fs";
+import type { WriteStream } from "node:fs";
+import net from "node:net";
+import type { BrowserModelStrategy, BrowserReport, CookieParam } from "./browser/types.js";
+import type {
+  TransportFailureReason,
+  AzureOptions,
+  ModelName,
+  ThinkingTimeLevel,
+} from "./oracle.js";
+import { DEFAULT_MODEL, formatElapsed } from "./oracle.js";
+import { safeModelSlug } from "./oracle/modelResolver.js";
+import { getOracleHomeDir } from "./oracleHome.js";
 
 export type SessionMode = "api" | "browser";
 
@@ -132,7 +137,7 @@ export interface StoredRunOptions {
   /** Whether the run preferred to stay attached (true) or detach (false). */
   waitPreference?: boolean;
   /** Browser executor selector for detached runs (persisted for session replay/diagnostics). */
-  browserExecutor?: 'chatgpt' | 'remote' | 'grok' | 'gemini';
+  browserExecutor?: "chatgpt" | "remote" | "grok" | "gemini";
   /** Remote host used for browser automation (when browserExecutor is remote). */
   remoteHost?: string | null;
   youtube?: string;

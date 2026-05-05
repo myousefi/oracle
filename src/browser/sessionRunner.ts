@@ -1,14 +1,14 @@
-import chalk from 'chalk';
-import type { RunOracleOptions } from '../oracle.js';
-import { formatTokenCount } from '../oracle/runUtils.js';
-import { formatFinishLine } from '../oracle/finishLine.js';
-import type { BrowserSessionConfig, BrowserRuntimeMetadata } from '../sessionStore.js';
-import { runBrowserMode } from '../browserMode.js';
-import type { BrowserRunResult } from '../browserMode.js';
-import { assembleBrowserPrompt } from './prompt.js';
-import { BrowserAutomationError } from '../oracle/errors.js';
-import type { BrowserLogger } from './types.js';
-import { extractConversationIdFromUrl } from './reattachHelpers.js';
+import chalk from "chalk";
+import type { RunOracleOptions } from "../oracle.js";
+import { formatTokenCount } from "../oracle/runUtils.js";
+import { formatFinishLine } from "../oracle/finishLine.js";
+import type { BrowserSessionConfig, BrowserRuntimeMetadata } from "../sessionStore.js";
+import { runBrowserMode } from "../browserMode.js";
+import type { BrowserRunResult } from "../browserMode.js";
+import { assembleBrowserPrompt } from "./prompt.js";
+import { BrowserAutomationError } from "../oracle/errors.js";
+import type { BrowserLogger } from "./types.js";
+import { extractConversationIdFromUrl } from "./reattachHelpers.js";
 
 export interface BrowserExecutionResult {
   usage: {
@@ -176,7 +176,7 @@ export async function runBrowserSessionExecution(
       userDataDir: browserResult.userDataDir,
       chromeTargetId: browserResult.chromeTargetId,
       tabUrl: browserResult.tabUrl,
-      conversationId: extractConversationIdFromUrl(browserResult.tabUrl ?? ''),
+      conversationId: extractConversationIdFromUrl(browserResult.tabUrl ?? ""),
       controllerPid: browserResult.controllerPid ?? process.pid,
     },
     answerText,

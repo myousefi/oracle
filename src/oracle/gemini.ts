@@ -16,23 +16,32 @@ import type {
 } from "./types.js";
 
 const MODEL_ID_MAP: Record<ModelName, string> = {
-  'gemini-3.1-pro': 'gemini-3.1-pro-preview',
-  'gemini-3-pro': 'gemini-3-pro-preview',
-  'gpt-5.4-pro': 'gpt-5.4-pro',
-  'gpt-5.1-pro': 'gpt-5.1-pro',
-  'gpt-5-pro': 'gpt-5.4-pro',
-  'gpt-5.4': 'gpt-5.4',
-  'gpt-5.4-thinking': 'gpt-5.4',
-  'gpt-5.3-instant': 'gpt-5.3-instant',
-  'gpt-5.1': 'gpt-5.1',
-  'gpt-5.1-codex': 'gpt-5.1-codex',
-  'gpt-5.2': 'gpt-5.4',
-  'gpt-5.2-thinking': 'gpt-5.4',
-  'gpt-5.2-instant': 'gpt-5.3-instant',
-  'gpt-5.2-pro': 'gpt-5.4-pro',
-  'claude-4.5-sonnet': 'claude-4.5-sonnet',
-  'claude-4.1-opus': 'claude-4.1-opus',
-  'grok-4.20': 'grok-4.20',
+  "gemini-3.1-pro": "gemini-3.1-pro-preview",
+  "gemini-3-pro": "gemini-3.1-pro-preview",
+  "gemini-3-pro-deep-think": "gemini-3.1-pro-preview",
+  "gemini-3-flash": "gemini-3-flash-preview",
+  "gemini-3.1-flash-lite": "gemini-3.1-flash-lite-preview",
+  "gpt-5.5-pro": "gpt-5.5-pro",
+  "gpt-5.4-pro": "gpt-5.5-pro",
+  "gpt-5.1-pro": "gpt-5.5-pro",
+  "gpt-5-pro": "gpt-5.5-pro",
+  "gpt-5.5": "gpt-5.5",
+  "gpt-5.5-thinking": "gpt-5.5",
+  "gpt-5.4": "gpt-5.5",
+  "gpt-5.4-thinking": "gpt-5.5",
+  "gpt-5.3-instant": "gpt-5.3-instant",
+  "gpt-5.1": "gpt-5.5",
+  "gpt-5.1-codex": "gpt-5.1-codex",
+  "gpt-5.2": "gpt-5.5",
+  "gpt-5.2-thinking": "gpt-5.5",
+  "gpt-5.2-instant": "gpt-5.3-instant",
+  "gpt-5.2-pro": "gpt-5.5-pro",
+  "claude-4.5-sonnet": "claude-4.5-sonnet",
+  "claude-4.1-opus": "claude-4.1-opus",
+  "grok-4.3": "grok-4.3",
+  "grok-4-1-fast": "grok-4-1-fast",
+  "grok-4.20-multi-agent": "grok-4.20-multi-agent",
+  "grok-4.20": "grok-4.20-multi-agent",
 };
 
 export function resolveGeminiModelId(modelName: ModelName): string {
@@ -42,7 +51,7 @@ export function resolveGeminiModelId(modelName: ModelName): string {
 
 export function createGeminiClient(
   apiKey: string,
-  modelName: ModelName = "gemini-3-pro",
+  modelName: ModelName = "gemini-3.1-pro",
   resolvedModelId?: string,
 ): ClientLike {
   const modelId = resolvedModelId ?? resolveGeminiModelId(modelName);

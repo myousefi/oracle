@@ -10,14 +10,14 @@ import {
   ensureNotBlocked,
   ensureLoggedIn,
   ensurePromptReady,
-} from './pageActions.js';
-import type { BrowserLogger, ChromeClient } from './types.js';
-import { launchChrome, connectToChrome, hideChromeWindow } from './chromeLifecycle.js';
-import { resolveBrowserConfig } from './config.js';
-import { syncCookies } from './cookies.js';
-import { CHATGPT_URL } from './constants.js';
-import { DEFAULT_ORACLE_BROWSER_PROFILE_DIR } from './profileDefaults.js';
-import { cleanupStaleProfileState } from './profileState.js';
+} from "./pageActions.js";
+import type { BrowserLogger, ChromeClient } from "./types.js";
+import { launchChrome, connectToChrome, hideChromeWindow } from "./chromeLifecycle.js";
+import { resolveBrowserConfig } from "./config.js";
+import { syncCookies } from "./cookies.js";
+import { CHATGPT_URL } from "./constants.js";
+import { DEFAULT_ORACLE_BROWSER_PROFILE_DIR } from "./profileDefaults.js";
+import { cleanupStaleProfileState } from "./profileState.js";
 import {
   pickTarget,
   extractConversationIdFromUrl,
@@ -59,7 +59,7 @@ export interface ReattachResult {
   answerText: string;
   answerMarkdown: string;
   response?: {
-    status: 'completed';
+    status: "completed";
     messageId?: string | null;
     turnId?: string | null;
     tabUrl?: string;
@@ -108,10 +108,14 @@ export async function resumeBrowserSession(
     }
 
     const ensureConversationOpen = async () => {
-      const expectedConversationId = runtime.conversationId ?? extractConversationIdFromUrl(runtime.tabUrl ?? '');
-      const { result } = await Runtime.evaluate({ expression: 'location.href', returnByValue: true });
-      const href = typeof result?.value === 'string' ? result.value : '';
-      if (href.includes('/c/')) {
+      const expectedConversationId =
+        runtime.conversationId ?? extractConversationIdFromUrl(runtime.tabUrl ?? "");
+      const { result } = await Runtime.evaluate({
+        expression: "location.href",
+        returnByValue: true,
+      });
+      const href = typeof result?.value === "string" ? result.value : "";
+      if (href.includes("/c/")) {
         const currentId = extractConversationIdFromUrl(href);
         if (expectedConversationId ? currentId === expectedConversationId : Boolean(currentId)) {
           return;
@@ -144,32 +148,38 @@ export async function resumeBrowserSession(
     await ensureConversationOpen();
     const conversation = await readConversationLocation(Runtime);
     const promptEcho = buildPromptEchoMatcher(deps.promptText ?? deps.promptPreview);
-    const recoveredTurn = await waitForRecoveredAssistantTurn(Runtime, {
-      messageId: deps.responseMeta?.turnId ? deps.responseMeta?.messageId : undefined,
-      turnId: deps.responseMeta?.turnId,
-      promptText: deps.promptText,
-      promptPreview: deps.promptPreview,
-    }, 10_000);
+    const recoveredTurn = await waitForRecoveredAssistantTurn(
+      Runtime,
+      {
+        messageId: deps.responseMeta?.turnId ? deps.responseMeta?.messageId : undefined,
+        turnId: deps.responseMeta?.turnId,
+        promptText: deps.promptText,
+        promptPreview: deps.promptPreview,
+      },
+      10_000,
+    );
     if (recoveredTurn) {
       logger(
         deps.responseMeta?.messageId || deps.responseMeta?.turnId
-          ? 'Recovered assistant response from stored turn metadata'
-          : 'Recovered assistant response by matching the original user prompt',
+          ? "Recovered assistant response from stored turn metadata"
+          : "Recovered assistant response by matching the original user prompt",
       );
       const canCaptureMarkdown = Boolean(recoveredTurn.meta.messageId || recoveredTurn.meta.turnId);
       if (!canCaptureMarkdown) {
-        logger('Recovered assistant turn has no stable DOM id; using extracted text instead of copy-button capture.');
+        logger(
+          "Recovered assistant turn has no stable DOM id; using extracted text instead of copy-button capture.",
+        );
       }
       const markdown = canCaptureMarkdown
         ? ((await withTimeout(
             captureMarkdown(Runtime, recoveredTurn.meta, logger),
             15_000,
-            'Reattach markdown capture timed out',
+            "Reattach markdown capture timed out",
           )) ?? recoveredTurn.text)
         : recoveredTurn.text;
       const aligned = alignPromptEchoMarkdown(recoveredTurn.text, markdown, promptEcho, logger);
 
-      if (client && typeof client.close === 'function') {
+      if (client && typeof client.close === "function") {
         try {
           await client.close();
         } catch {
@@ -181,7 +191,7 @@ export async function resumeBrowserSession(
         answerText: aligned.answerText,
         answerMarkdown: aligned.answerMarkdown,
         response: {
-          status: 'completed',
+          status: "completed",
           messageId: recoveredTurn.meta.messageId ?? undefined,
           turnId: recoveredTurn.meta.turnId ?? undefined,
           tabUrl: conversation.tabUrl,
@@ -190,7 +200,7 @@ export async function resumeBrowserSession(
       };
     }
     if (deps.allowLatestResponseFallback === false) {
-      throw new Error('Stored assistant turn could not be recovered from the conversation.');
+      throw new Error("Stored assistant turn could not be recovered from the conversation.");
     }
     const minTurnIndex = await readConversationTurnIndex(Runtime, logger);
     const answer = await withTimeout(
@@ -226,7 +236,7 @@ export async function resumeBrowserSession(
       answerText: aligned.answerText,
       answerMarkdown: aligned.answerMarkdown,
       response: {
-        status: 'completed',
+        status: "completed",
         messageId: recovered.meta.messageId ?? undefined,
         turnId: recovered.meta.turnId ?? undefined,
         tabUrl: conversation.tabUrl,
@@ -251,8 +261,8 @@ async function resumeBrowserSessionViaNewChrome(
   const resolved = resolveBrowserConfig(config ?? {});
   const manualLogin = Boolean(resolved.manualLogin);
   const userDataDir = manualLogin
-    ? resolved.manualLoginProfileDir ?? DEFAULT_ORACLE_BROWSER_PROFILE_DIR
-    : await mkdtemp(path.join(os.tmpdir(), 'oracle-reattach-'));
+    ? (resolved.manualLoginProfileDir ?? DEFAULT_ORACLE_BROWSER_PROFILE_DIR)
+    : await mkdtemp(path.join(os.tmpdir(), "oracle-reattach-"));
   if (manualLogin) {
     await mkdir(userDataDir, { recursive: true });
   }
@@ -323,28 +333,34 @@ async function resumeBrowserSessionViaNewChrome(
   const timeoutMs = resolved.timeoutMs ?? 120_000;
   const conversation = await readConversationLocation(Runtime);
   const promptEcho = buildPromptEchoMatcher(deps.promptText ?? deps.promptPreview);
-  const recoveredTurn = await waitForRecoveredAssistantTurn(Runtime, {
-    messageId: deps.responseMeta?.turnId ? deps.responseMeta?.messageId : undefined,
-    turnId: deps.responseMeta?.turnId,
-    promptText: deps.promptText,
-    promptPreview: deps.promptPreview,
-  }, 10_000);
+  const recoveredTurn = await waitForRecoveredAssistantTurn(
+    Runtime,
+    {
+      messageId: deps.responseMeta?.turnId ? deps.responseMeta?.messageId : undefined,
+      turnId: deps.responseMeta?.turnId,
+      promptText: deps.promptText,
+      promptPreview: deps.promptPreview,
+    },
+    10_000,
+  );
   if (recoveredTurn) {
     logger(
       deps.responseMeta?.messageId || deps.responseMeta?.turnId
-        ? 'Recovered assistant response from stored turn metadata'
-        : 'Recovered assistant response by matching the original user prompt',
+        ? "Recovered assistant response from stored turn metadata"
+        : "Recovered assistant response by matching the original user prompt",
     );
     const canCaptureMarkdown = Boolean(recoveredTurn.meta.messageId || recoveredTurn.meta.turnId);
     if (!canCaptureMarkdown) {
-      logger('Recovered assistant turn has no stable DOM id; using extracted text instead of copy-button capture.');
+      logger(
+        "Recovered assistant turn has no stable DOM id; using extracted text instead of copy-button capture.",
+      );
     }
     const markdown = canCaptureMarkdown
       ? ((await captureMarkdown(Runtime, recoveredTurn.meta, logger)) ?? recoveredTurn.text)
       : recoveredTurn.text;
     const aligned = alignPromptEchoMarkdown(recoveredTurn.text, markdown, promptEcho, logger);
 
-    if (client && typeof client.close === 'function') {
+    if (client && typeof client.close === "function") {
       try {
         await client.close();
       } catch {
@@ -358,7 +374,9 @@ async function resumeBrowserSessionViaNewChrome(
         // ignore
       }
       if (manualLogin) {
-        await cleanupStaleProfileState(userDataDir, logger, { lockRemovalMode: 'never' }).catch(() => undefined);
+        await cleanupStaleProfileState(userDataDir, logger, { lockRemovalMode: "never" }).catch(
+          () => undefined,
+        );
       } else {
         await rm(userDataDir, { recursive: true, force: true }).catch(() => undefined);
       }
@@ -368,7 +386,7 @@ async function resumeBrowserSessionViaNewChrome(
       answerText: aligned.answerText,
       answerMarkdown: aligned.answerMarkdown,
       response: {
-        status: 'completed',
+        status: "completed",
         messageId: recoveredTurn.meta.messageId ?? undefined,
         turnId: recoveredTurn.meta.turnId ?? undefined,
         tabUrl: conversation.tabUrl,
@@ -377,7 +395,7 @@ async function resumeBrowserSessionViaNewChrome(
     };
   }
   if (deps.allowLatestResponseFallback === false) {
-    throw new Error('Stored assistant turn could not be recovered from the conversation.');
+    throw new Error("Stored assistant turn could not be recovered from the conversation.");
   }
   const minTurnIndex = await readConversationTurnIndex(Runtime, logger);
   const answer = await waitForResponse(Runtime, timeoutMs, logger, minTurnIndex ?? undefined);
@@ -418,7 +436,7 @@ async function resumeBrowserSessionViaNewChrome(
     answerText: aligned.answerText,
     answerMarkdown: aligned.answerMarkdown,
     response: {
-      status: 'completed',
+      status: "completed",
       messageId: recovered.meta.messageId ?? undefined,
       turnId: recovered.meta.turnId ?? undefined,
       tabUrl: conversation.tabUrl,

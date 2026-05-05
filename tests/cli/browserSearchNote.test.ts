@@ -12,22 +12,26 @@ const makeRunOptions = (search: boolean | undefined): RunOracleOptions => ({
   heartbeatIntervalMs: 30000,
 });
 
-describe('browser search note', () => {
-  it('forces search on for ChatGPT browser runs', () => {
+describe("browser search note", () => {
+  it("forces search on for ChatGPT browser runs", () => {
     const logSpy = vi.fn();
     const opts = makeRunOptions(false);
-    opts.model = 'gpt-5.4';
-    enforceBrowserSearchFlag(opts, 'browser' as SessionMode, logSpy);
-    expect(logSpy).toHaveBeenCalledWith(chalk.dim('Note: ChatGPT browser runs always enable search; overriding search=false.'));
+    opts.model = "gpt-5.4";
+    enforceBrowserSearchFlag(opts, "browser" as SessionMode, logSpy);
+    expect(logSpy).toHaveBeenCalledWith(
+      chalk.dim("Note: ChatGPT browser runs always enable search; overriding search=false."),
+    );
     expect(opts.search).toBe(true);
   });
 
-  it('still ignores search=false for non-ChatGPT browser runs', () => {
+  it("still ignores search=false for non-ChatGPT browser runs", () => {
     const logSpy = vi.fn();
     const opts = makeRunOptions(false);
-    opts.model = 'gemini-3-pro';
-    enforceBrowserSearchFlag(opts, 'browser' as SessionMode, logSpy);
-    expect(logSpy).toHaveBeenCalledWith(chalk.dim('Note: search is not available in browser engine; ignoring search=false.'));
+    opts.model = "gemini-3-pro";
+    enforceBrowserSearchFlag(opts, "browser" as SessionMode, logSpy);
+    expect(logSpy).toHaveBeenCalledWith(
+      chalk.dim("Note: search is not available in browser engine; ignoring search=false."),
+    );
     expect(opts.search).toBeUndefined();
   });
 

@@ -7,9 +7,9 @@ Oracle reads an optional per-user config from `~/.oracle/config.json`. The file 
 ```json5
 {
   // Default engine when neither CLI flag nor env decide
-  engine: "api",           // or "browser"
-  model: "gpt-5.4-pro",    // current default (legacy GPT-5.2/5.1 aliases normalize here)
-  search: "on",            // "on" | "off"
+  engine: "api", // or "browser"
+  model: "gpt-5.4-pro", // current default (legacy GPT-5.2/5.1 aliases normalize here)
+  search: "on", // "on" | "off"
 
   notify: {
     enabled: true, // default notifications (still auto-mutes in CI/SSH unless forced on)

@@ -1,8 +1,11 @@
-import { CHATGPT_URL, DEFAULT_MODEL_STRATEGY, DEFAULT_MODEL_TARGET } from './constants.js';
-import { normalizeBrowserModelStrategy } from './modelStrategy.js';
-import type { BrowserAutomationConfig, ResolvedBrowserConfig } from './types.js';
-import { isTemporaryChatUrl, normalizeChatgptUrl } from './utils.js';
-import { DEFAULT_ORACLE_BROWSER_DEBUG_PORT, DEFAULT_ORACLE_BROWSER_PROFILE_DIR } from './profileDefaults.js';
+import { CHATGPT_URL, DEFAULT_MODEL_STRATEGY, DEFAULT_MODEL_TARGET } from "./constants.js";
+import { normalizeBrowserModelStrategy } from "./modelStrategy.js";
+import type { BrowserAutomationConfig, ResolvedBrowserConfig } from "./types.js";
+import { isTemporaryChatUrl, normalizeChatgptUrl } from "./utils.js";
+import {
+  DEFAULT_ORACLE_BROWSER_DEBUG_PORT,
+  DEFAULT_ORACLE_BROWSER_PROFILE_DIR,
+} from "./profileDefaults.js";
 
 export const DEFAULT_BROWSER_CONFIG: ResolvedBrowserConfig = {
   chromeProfile: null,
@@ -48,38 +51,39 @@ export function resolveBrowserConfig(
     (process.env.ORACLE_BROWSER_ALLOW_COOKIE_ERRORS ?? "").trim().toLowerCase() === "true" ||
     (process.env.ORACLE_BROWSER_ALLOW_COOKIE_ERRORS ?? "").trim() === "1";
   const rawUrl = config?.chatgptUrl ?? config?.url ?? DEFAULT_BROWSER_CONFIG.url;
-  const normalizedUrl = normalizeChatgptUrl(rawUrl ?? DEFAULT_BROWSER_CONFIG.url, DEFAULT_BROWSER_CONFIG.url);
+  const normalizedUrl = normalizeChatgptUrl(
+    rawUrl ?? DEFAULT_BROWSER_CONFIG.url,
+    DEFAULT_BROWSER_CONFIG.url,
+  );
   const desiredModel =
     config?.desiredModel !== undefined
       ? config.desiredModel
-      : DEFAULT_BROWSER_CONFIG.desiredModel ?? DEFAULT_MODEL_TARGET;
+      : (DEFAULT_BROWSER_CONFIG.desiredModel ?? DEFAULT_MODEL_TARGET);
   const modelStrategy =
     normalizeBrowserModelStrategy(config?.modelStrategy) ??
     DEFAULT_BROWSER_CONFIG.modelStrategy ??
     DEFAULT_MODEL_STRATEGY;
   if (
-    modelStrategy === 'select' &&
+    modelStrategy === "select" &&
     isTemporaryChatUrl(normalizedUrl) &&
-    typeof desiredModel === 'string' &&
+    typeof desiredModel === "string" &&
     /\bpro\b/i.test(desiredModel)
   ) {
     throw new Error(
-      'Temporary Chat mode does not expose Pro models in the ChatGPT model picker. ' +
-        'Remove "temporary-chat=true" from your browser URL, or use a non-Pro model label (e.g. "GPT-5.4 Thinking").',
+      "Temporary Chat mode does not expose Pro models in the ChatGPT model picker. " +
+        'Remove "temporary-chat=true" from your browser URL, or use a non-Pro model label (e.g. "GPT-5.5 Thinking").',
     );
   }
-  const isWindows = process.platform === 'win32';
+  const isWindows = process.platform === "win32";
   const manualLogin =
-    config?.manualLogin ??
-    (isWindows ? true : DEFAULT_BROWSER_CONFIG.manualLogin);
+    config?.manualLogin ?? (isWindows ? true : DEFAULT_BROWSER_CONFIG.manualLogin);
   const cookieSyncDefault = isWindows ? false : DEFAULT_BROWSER_CONFIG.cookieSync;
   const resolvedProfileDir =
     config?.manualLoginProfileDir ??
     process.env.ORACLE_BROWSER_PROFILE_DIR ??
     DEFAULT_ORACLE_BROWSER_PROFILE_DIR;
   const keepBrowser =
-    config?.keepBrowser ??
-    (manualLogin ? true : DEFAULT_BROWSER_CONFIG.keepBrowser);
+    config?.keepBrowser ?? (manualLogin ? true : DEFAULT_BROWSER_CONFIG.keepBrowser);
   return {
     ...DEFAULT_BROWSER_CONFIG,
     ...config,

@@ -36,18 +36,18 @@ import {
   waitForAttachmentCompletion,
   waitForUserTurnAttachments,
   readAssistantSnapshot,
-} from './pageActions.js';
-import { INPUT_SELECTORS } from './constants.js';
-import { uploadAttachmentViaDataTransfer } from './actions/remoteFileTransfer.js';
-import { ensureThinkingTime } from './actions/thinkingTime.js';
-import { estimateTokenCount, withRetries, delay } from './utils.js';
-import { formatElapsed } from '../oracle/format.js';
-import { CHATGPT_URL, CONVERSATION_TURN_SELECTOR, DEFAULT_MODEL_STRATEGY } from './constants.js';
-import type { LaunchedChrome } from 'chrome-launcher';
-import { BrowserAutomationError } from '../oracle/errors.js';
-import { alignPromptEchoPair, buildPromptEchoMatcher } from './reattachHelpers.js';
-import type { ProfileRunLock } from './profileState.js';
-import { DEFAULT_ORACLE_BROWSER_PROFILE_DIR } from './profileDefaults.js';
+} from "./pageActions.js";
+import { INPUT_SELECTORS } from "./constants.js";
+import { uploadAttachmentViaDataTransfer } from "./actions/remoteFileTransfer.js";
+import { ensureThinkingTime } from "./actions/thinkingTime.js";
+import { estimateTokenCount, withRetries, delay } from "./utils.js";
+import { formatElapsed } from "../oracle/format.js";
+import { CHATGPT_URL, CONVERSATION_TURN_SELECTOR, DEFAULT_MODEL_STRATEGY } from "./constants.js";
+import type { LaunchedChrome } from "chrome-launcher";
+import { BrowserAutomationError } from "../oracle/errors.js";
+import { alignPromptEchoPair, buildPromptEchoMatcher } from "./reattachHelpers.js";
+import type { ProfileRunLock } from "./profileState.js";
+import { DEFAULT_ORACLE_BROWSER_PROFILE_DIR } from "./profileDefaults.js";
 import {
   cleanupStaleProfileState,
   acquireProfileRunLock,
@@ -61,10 +61,10 @@ import {
 import { runProviderSubmissionFlow } from "./providerDomFlow.js";
 import { chatgptDomProvider } from "./providers/index.js";
 
-export type { BrowserAutomationConfig, BrowserRunOptions, BrowserRunResult } from './types.js';
-export { CHATGPT_URL, DEFAULT_MODEL_STRATEGY, DEFAULT_MODEL_TARGET } from './constants.js';
-export { parseDuration, delay, normalizeChatgptUrl, isTemporaryChatUrl } from './utils.js';
-export { ensureBrowserLoginProfile } from './login.js';
+export type { BrowserAutomationConfig, BrowserRunOptions, BrowserRunResult } from "./types.js";
+export { CHATGPT_URL, DEFAULT_MODEL_STRATEGY, DEFAULT_MODEL_TARGET } from "./constants.js";
+export { parseDuration, delay, normalizeChatgptUrl, isTemporaryChatUrl } from "./utils.js";
+export { ensureBrowserLoginProfile } from "./login.js";
 
 function shouldPreserveBrowserOnError(error: Error, headless?: boolean): boolean {
   if (headless) {
@@ -73,8 +73,10 @@ function shouldPreserveBrowserOnError(error: Error, headless?: boolean): boolean
   if (!(error instanceof BrowserAutomationError)) {
     return false;
   }
-  return error.details?.stage === 'cloudflare-challenge';
+  return error.details?.stage === "cloudflare-challenge";
 }
+
+export const shouldPreserveBrowserOnErrorForTest = shouldPreserveBrowserOnError;
 
 export async function runBrowserMode(options: BrowserRunOptions): Promise<BrowserRunResult> {
   const promptText = options.prompt?.trim();

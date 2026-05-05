@@ -1,34 +1,43 @@
 export type TokenizerFn = (input: unknown, options?: Record<string, unknown>) => number;
 
 export type KnownModelName =
-  | 'gpt-5.4-pro'
-  | 'gpt-5.1-pro'
-  | 'gpt-5-pro'
-  | 'gpt-5.4'
-  | 'gpt-5.4-thinking'
-  | 'gpt-5.3-instant'
-  | 'gpt-5.1'
-  | 'gpt-5.1-codex'
-  | 'gpt-5.2'
-  | 'gpt-5.2-instant'
-  | 'gpt-5.2-pro'
-  | 'gpt-5.2-thinking'
-  | 'gemini-3.1-pro'
-  | 'gemini-3-pro'
-  | 'claude-4.5-sonnet'
-  | 'claude-4.1-opus'
-  | 'grok-4.20';
+  | "gpt-5.5-pro"
+  | "gpt-5.4-pro"
+  | "gpt-5.1-pro"
+  | "gpt-5-pro"
+  | "gpt-5.5"
+  | "gpt-5.5-thinking"
+  | "gpt-5.4"
+  | "gpt-5.4-thinking"
+  | "gpt-5.3-instant"
+  | "gpt-5.1"
+  | "gpt-5.1-codex"
+  | "gpt-5.2"
+  | "gpt-5.2-instant"
+  | "gpt-5.2-pro"
+  | "gpt-5.2-thinking"
+  | "gemini-3.1-pro"
+  | "gemini-3-pro"
+  | "gemini-3-flash"
+  | "gemini-3.1-flash-lite"
+  | "claude-4.5-sonnet"
+  | "claude-4.1-opus"
+  | "grok-4.3"
+  | "grok-4-1-fast"
+  | "grok-4.20-multi-agent"
+  | "grok-4.20";
 
 // ModelName now allows arbitrary strings so OpenRouter / custom IDs can pass through.
 export type ModelName = KnownModelName | (string & {});
 
 export type ProModelName =
-  | 'gpt-5.4-pro'
-  | 'gpt-5.1-pro'
-  | 'gpt-5-pro'
-  | 'gpt-5.2-pro'
-  | 'claude-4.5-sonnet'
-  | 'claude-4.1-opus';
+  | "gpt-5.5-pro"
+  | "gpt-5.4-pro"
+  | "gpt-5.1-pro"
+  | "gpt-5-pro"
+  | "gpt-5.2-pro"
+  | "claude-4.5-sonnet"
+  | "claude-4.1-opus";
 
 export type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
 

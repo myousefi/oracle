@@ -6,7 +6,7 @@ const baseRunOptions: RunOracleOptions = {
   prompt: "Do it",
   system: "SYS",
   file: [],
-  model: 'gpt-5.4-pro',
+  model: "gpt-5.4-pro",
 };
 
 describe("runDryRunSummary", () => {
@@ -19,8 +19,10 @@ describe("runDryRunSummary", () => {
       { readFilesImpl },
     );
 
-    expect(log).toHaveBeenCalledWith(expect.stringContaining('[dry-run] Oracle (0.4.1) would call gpt-5.4-pro'));
-    expect(log).toHaveBeenCalledWith(expect.stringContaining('No files matched'));
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("[dry-run] Oracle (0.4.1) would call gpt-5.4-pro"),
+    );
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("No files matched"));
   });
 
   test("browser dry run with bundled attachments logs bundle info and cookie source", async () => {

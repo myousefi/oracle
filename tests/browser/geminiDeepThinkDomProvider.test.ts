@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
-import { geminiDeepThinkDomProvider } from "../../src/browser/providers/geminiDeepThinkDomProvider.js";
+import { JSDOM } from "jsdom";
+import { geminiDeepThinkDomProvider } from "../../src/browser/providers/index.js";
 
-describe("geminiDeepThinkDomProvider timeouts", () => {
+describe("geminiDeepThinkDomProvider", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -20,6 +21,32 @@ describe("geminiDeepThinkDomProvider timeouts", () => {
         state: { inputTimeoutMs: 2_000 },
       }),
     ).rejects.toThrow("Timed out waiting for Gemini UI prompt input to become ready.");
+  });
+
+  it("selects the current Gemini Thinking mode picker", async () => {
+    const dom = new JSDOM(
+      `
+        <button aria-label="Open mode picker" class="input-area-switch mat-mdc-menu-trigger">Fast</button>
+        <div role="menu">
+          <button role="menuitem" id="thinking">Thinking <span>Solves complex problems</span></button>
+        </div>
+      `,
+      { runScripts: "dangerously", url: "https://gemini.google.com/app" },
+    );
+    const button = dom.window.document.querySelector("button.input-area-switch") as HTMLElement;
+    const thinking = dom.window.document.querySelector("#thinking") as HTMLElement;
+    thinking.addEventListener("click", () => {
+      button.textContent = "Thinking";
+    });
+
+    await geminiDeepThinkDomProvider.selectMode?.({
+      prompt: "hi",
+      evaluate: async <T>(expression: string) => dom.window.eval(expression) as T,
+      delay: async () => undefined,
+    });
+
+    expect(button.textContent).toBe("Thinking");
+    dom.window.close();
   });
 
   it("uses timeoutMs for response polling", async () => {

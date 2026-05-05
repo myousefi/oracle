@@ -719,16 +719,16 @@ describe("performSessionRun", () => {
       runtime: {
         chromePid: 123,
         chromePort: 9222,
-        userDataDir: '/tmp/profile',
-        tabUrl: 'https://chatgpt.com/c/chapter-1',
-        conversationId: 'chapter-1',
+        userDataDir: "/tmp/profile",
+        tabUrl: "https://chatgpt.com/c/chapter-1",
+        conversationId: "chapter-1",
       },
-      answerText: 'Answer',
+      answerText: "Answer",
       response: {
-        messageId: 'message-1',
-        turnId: 'assistant-turn-1',
-        tabUrl: 'https://chatgpt.com/c/chapter-1',
-        conversationId: 'chapter-1',
+        messageId: "message-1",
+        turnId: "assistant-turn-1",
+        tabUrl: "https://chatgpt.com/c/chapter-1",
+        conversationId: "chapter-1",
       },
     });
 
@@ -750,10 +750,10 @@ describe("performSessionRun", () => {
       status: "completed",
       browser: expect.objectContaining({ runtime: expect.objectContaining({ chromePid: 123 }) }),
       response: expect.objectContaining({
-        status: 'completed',
-        messageId: 'message-1',
-        turnId: 'assistant-turn-1',
-        conversationId: 'chapter-1',
+        status: "completed",
+        messageId: "message-1",
+        turnId: "assistant-turn-1",
+        conversationId: "chapter-1",
       }),
     });
     expect(sessionStoreMock.updateModelRun).toHaveBeenCalledWith(

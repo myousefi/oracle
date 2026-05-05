@@ -44,22 +44,22 @@ export function applyBrowserDefaultsFromConfig(
 
   const browser = config.browser;
   if (!browser) {
-    if (isUnset('browserManualLogin')) {
+    if (isUnset("browserManualLogin")) {
       options.browserManualLogin = true;
     }
     return;
   }
 
-  const normalizedModel = (model ?? '').toLowerCase();
-  const isGrok = normalizedModel.startsWith('grok');
+  const normalizedModel = (model ?? "").toLowerCase();
+  const isGrok = normalizedModel.startsWith("grok");
   const configuredChatgptUrl = browser.chatgptUrl ?? browser.url;
   const cliChatgptSet = options.chatgptUrl !== undefined || options.browserUrl !== undefined;
   if (isGrok) {
-    if (isUnset('browserUrl') && !cliChatgptSet && browser.grokUrl !== undefined) {
-      options.browserUrl = normalizeChatgptUrl(browser.grokUrl ?? '', CHATGPT_URL);
+    if (isUnset("browserUrl") && !cliChatgptSet && browser.grokUrl !== undefined) {
+      options.browserUrl = normalizeChatgptUrl(browser.grokUrl ?? "", CHATGPT_URL);
     }
-  } else if (isUnset('chatgptUrl') && !cliChatgptSet && configuredChatgptUrl !== undefined) {
-    options.chatgptUrl = normalizeChatgptUrl(configuredChatgptUrl ?? '', CHATGPT_URL);
+  } else if (isUnset("chatgptUrl") && !cliChatgptSet && configuredChatgptUrl !== undefined) {
+    options.chatgptUrl = normalizeChatgptUrl(configuredChatgptUrl ?? "", CHATGPT_URL);
   }
 
   if (isUnset("browserChromeProfile") && browser.chromeProfile !== undefined) {
@@ -119,10 +119,10 @@ export function applyBrowserDefaultsFromConfig(
   if (isUnset("browserKeepBrowser") && browser.keepBrowser !== undefined) {
     options.browserKeepBrowser = browser.keepBrowser;
   }
-  if (isUnset('browserManualLogin') && browser.manualLogin === undefined) {
+  if (isUnset("browserManualLogin") && browser.manualLogin === undefined) {
     options.browserManualLogin = true;
   }
-  if (isUnset('browserModelStrategy') && browser.modelStrategy !== undefined) {
+  if (isUnset("browserModelStrategy") && browser.modelStrategy !== undefined) {
     options.browserModelStrategy = browser.modelStrategy;
   }
   if (isUnset("browserThinkingTime") && browser.thinkingTime !== undefined) {

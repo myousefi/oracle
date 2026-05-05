@@ -16,7 +16,7 @@ describe("applyBrowserDefaultsFromConfig", () => {
       },
     };
 
-    applyBrowserDefaultsFromConfig(options, config, source, 'gpt-5.2');
+    applyBrowserDefaultsFromConfig(options, config, source, "gpt-5.2");
 
     expect(options.chatgptUrl).toBe("https://chatgpt.com/g/g-p-foo/project");
   });
@@ -29,7 +29,7 @@ describe("applyBrowserDefaultsFromConfig", () => {
       },
     };
 
-    applyBrowserDefaultsFromConfig(options, config, source, 'gpt-5.2');
+    applyBrowserDefaultsFromConfig(options, config, source, "gpt-5.2");
 
     expect(options.chatgptUrl).toBe("https://override.example.com/");
   });
@@ -42,7 +42,7 @@ describe("applyBrowserDefaultsFromConfig", () => {
       },
     };
 
-    applyBrowserDefaultsFromConfig(options, config, source, 'gpt-5.2');
+    applyBrowserDefaultsFromConfig(options, config, source, "gpt-5.2");
 
     expect(options.chatgptUrl).toBe("https://chatgpt.com/g/g-p-bar/project");
   });
@@ -64,7 +64,7 @@ describe("applyBrowserDefaultsFromConfig", () => {
       },
     };
 
-    applyBrowserDefaultsFromConfig(options, config, (_key) => 'default', 'gpt-5.2');
+    applyBrowserDefaultsFromConfig(options, config, (_key) => "default", "gpt-5.2");
 
     expect(options.browserChromePath).toBe("/Applications/Comet.app/Contents/MacOS/Comet");
     expect(options.browserChromeProfile).toBe("Work");
@@ -86,7 +86,7 @@ describe("applyBrowserDefaultsFromConfig", () => {
       },
     };
 
-    applyBrowserDefaultsFromConfig(options, config, (_key) => 'default', 'gpt-5.2');
+    applyBrowserDefaultsFromConfig(options, config, (_key) => "default", "gpt-5.2");
 
     expect(options.browserThinkingTime).toBe("extended");
   });
@@ -99,8 +99,9 @@ describe("applyBrowserDefaultsFromConfig", () => {
       },
     };
 
-    const source = (key: keyof BrowserDefaultsOptions) => (key === 'browserThinkingTime' ? 'cli' : 'default');
-    applyBrowserDefaultsFromConfig(options, config, source, 'gpt-5.2');
+    const source = (key: keyof BrowserDefaultsOptions) =>
+      key === "browserThinkingTime" ? "cli" : "default";
+    applyBrowserDefaultsFromConfig(options, config, source, "gpt-5.2");
 
     expect(options.browserThinkingTime).toBe("light");
   });
@@ -114,7 +115,7 @@ describe("applyBrowserDefaultsFromConfig", () => {
       },
     };
 
-    applyBrowserDefaultsFromConfig(options, config, (_key) => 'default', 'gpt-5.2');
+    applyBrowserDefaultsFromConfig(options, config, (_key) => "default", "gpt-5.2");
 
     expect(options.browserManualLogin).toBe(true);
     expect(options.browserManualLoginProfileDir).toBe("/tmp/oracle-profile");
@@ -128,31 +129,32 @@ describe("applyBrowserDefaultsFromConfig", () => {
       },
     };
 
-    const source = (key: keyof BrowserDefaultsOptions) => (key === 'browserManualLogin' ? 'cli' : 'default');
-    applyBrowserDefaultsFromConfig(options, config, source, 'gpt-5.2');
+    const source = (key: keyof BrowserDefaultsOptions) =>
+      key === "browserManualLogin" ? "cli" : "default";
+    applyBrowserDefaultsFromConfig(options, config, source, "gpt-5.2");
 
     expect(options.browserManualLogin).toBe(true);
   });
 
-  test('defaults to manual-login when not explicitly configured', () => {
+  test("defaults to manual-login when not explicitly configured", () => {
     const options: BrowserDefaultsOptions = {};
     const config: UserConfig = {};
 
-    applyBrowserDefaultsFromConfig(options, config, source, 'gpt-5.2');
+    applyBrowserDefaultsFromConfig(options, config, source, "gpt-5.2");
 
     expect(options.browserManualLogin).toBe(true);
   });
 
-  test('uses grokUrl for grok models when URL flags are absent', () => {
+  test("uses grokUrl for grok models when URL flags are absent", () => {
     const options: BrowserDefaultsOptions = {};
     const config: UserConfig = {
       browser: {
-        grokUrl: 'https://grok.com/',
+        grokUrl: "https://grok.com/",
       },
     };
 
-    applyBrowserDefaultsFromConfig(options, config, source, 'grok-4.1');
+    applyBrowserDefaultsFromConfig(options, config, source, "grok-4.1");
 
-    expect(options.browserUrl).toBe('https://grok.com/');
+    expect(options.browserUrl).toBe("https://grok.com/");
   });
 });

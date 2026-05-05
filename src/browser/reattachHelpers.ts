@@ -318,14 +318,14 @@ export async function readConversationTurnIndex(
 }
 
 export async function readConversationLocation(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
 ): Promise<{ tabUrl?: string; conversationId?: string }> {
   try {
-    const { result } = await Runtime.evaluate({ expression: 'location.href', returnByValue: true });
-    const tabUrl = typeof result?.value === 'string' ? result.value : undefined;
+    const { result } = await Runtime.evaluate({ expression: "location.href", returnByValue: true });
+    const tabUrl = typeof result?.value === "string" ? result.value : undefined;
     return {
       tabUrl,
-      conversationId: extractConversationIdFromUrl(tabUrl ?? ''),
+      conversationId: extractConversationIdFromUrl(tabUrl ?? ""),
     };
   } catch {
     return {};
@@ -333,7 +333,7 @@ export async function readConversationLocation(
 }
 
 export async function recoverAssistantTurnFromConversation(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   options: {
     messageId?: string | null;
     turnId?: string | null;
@@ -349,20 +349,25 @@ export async function recoverAssistantTurnFromConversation(
   try {
     const { result } = await Runtime.evaluate({ expression, returnByValue: true });
     const value = result?.value;
-    if (!value || typeof value !== 'object') {
+    if (!value || typeof value !== "object") {
       return null;
     }
-    const payload = value as { text?: unknown; html?: unknown; messageId?: unknown; turnId?: unknown };
-    const text = typeof payload.text === 'string' ? payload.text.trim() : '';
+    const payload = value as {
+      text?: unknown;
+      html?: unknown;
+      messageId?: unknown;
+      turnId?: unknown;
+    };
+    const text = typeof payload.text === "string" ? payload.text.trim() : "";
     if (!text) {
       return null;
     }
     return {
       text,
-      html: typeof payload.html === 'string' ? payload.html : undefined,
+      html: typeof payload.html === "string" ? payload.html : undefined,
       meta: {
-        messageId: typeof payload.messageId === 'string' ? payload.messageId : undefined,
-        turnId: typeof payload.turnId === 'string' ? payload.turnId : undefined,
+        messageId: typeof payload.messageId === "string" ? payload.messageId : undefined,
+        turnId: typeof payload.turnId === "string" ? payload.turnId : undefined,
       },
     };
   } catch {
@@ -371,7 +376,7 @@ export async function recoverAssistantTurnFromConversation(
 }
 
 export async function waitForRecoveredAssistantTurn(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   options: {
     messageId?: string | null;
     turnId?: string | null;
@@ -408,17 +413,20 @@ function normalizeForComparison(text: string): string {
 }
 
 function normalizePromptMatchText(text: string): string {
-  return String(text || '')
+  return String(text || "")
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .replace(/\\s+/g, ' ')
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\\s+/g, " ")
     .trim();
 }
 
-function buildPromptRecoveryNeedles(promptText?: string | null, promptPreview?: string | null): string[] {
+function buildPromptRecoveryNeedles(
+  promptText?: string | null,
+  promptPreview?: string | null,
+): string[] {
   const needles: string[] = [];
   const addNeedle = (value: string | null | undefined, maxLength = 420) => {
-    const normalized = normalizePromptMatchText(value ?? '');
+    const normalized = normalizePromptMatchText(value ?? "");
     if (!normalized) return;
     const trimmed = normalized.length > maxLength ? normalized.slice(-maxLength) : normalized;
     if (trimmed.length < 24) return;
@@ -427,7 +435,7 @@ function buildPromptRecoveryNeedles(promptText?: string | null, promptPreview?: 
     }
   };
 
-  const rawPrompt = String(promptText ?? '');
+  const rawPrompt = String(promptText ?? "");
   const lines = rawPrompt
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -435,18 +443,18 @@ function buildPromptRecoveryNeedles(promptText?: string | null, promptPreview?: 
 
   let nowWriteIndex = -1;
   for (let index = lines.length - 1; index >= 0; index -= 1) {
-    if (/^now write\b/i.test(lines[index] ?? '')) {
+    if (/^now write\b/i.test(lines[index] ?? "")) {
       nowWriteIndex = index;
       break;
     }
   }
   if (nowWriteIndex >= 0) {
     addNeedle(lines[nowWriteIndex], 220);
-    addNeedle(lines.slice(nowWriteIndex, Math.min(lines.length, nowWriteIndex + 8)).join(' '), 420);
+    addNeedle(lines.slice(nowWriteIndex, Math.min(lines.length, nowWriteIndex + 8)).join(" "), 420);
   }
   if (lines.length > 0) {
     addNeedle(lines[lines.length - 1], 220);
-    addNeedle(lines.slice(Math.max(0, lines.length - 8)).join(' '), 420);
+    addNeedle(lines.slice(Math.max(0, lines.length - 8)).join(" "), 420);
   }
 
   const normalizedPrompt = normalizePromptMatchText(rawPrompt);

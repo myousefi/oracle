@@ -78,8 +78,8 @@ describe("askOracleFlow", () => {
 
   test("cancels when prompt input is blank", async () => {
     promptMock.mockResolvedValue({
-      promptInput: '',
-      mode: 'browser',
+      promptInput: "",
+      mode: "browser",
       model: DEFAULT_MODEL,
       files: [],
     });
@@ -94,8 +94,8 @@ describe("askOracleFlow", () => {
 
   test("runs happy path and calls performSessionRun", async () => {
     promptMock.mockResolvedValue({
-      promptInput: 'Hello world',
-      mode: 'browser',
+      promptInput: "Hello world",
+      mode: "browser",
       model: DEFAULT_MODEL,
       files: [],
       models: [],
@@ -106,7 +106,7 @@ describe("askOracleFlow", () => {
 
     expect(ensureSessionStorageMock).toHaveBeenCalled();
     expect(initializeSessionMock).toHaveBeenCalledWith(
-      expect.objectContaining({ prompt: 'Hello world', mode: 'browser' }),
+      expect.objectContaining({ prompt: "Hello world", mode: "browser" }),
       expect.any(String),
       expect.objectContaining({ enabled: true, sound: false }),
     );
@@ -114,10 +114,10 @@ describe("askOracleFlow", () => {
     expect(performSessionRunMock.mock.calls[0][0].sessionMeta.id).toBe("sess-123");
   });
 
-  test('ignores wizard multi-model selections and runs single model', async () => {
+  test("ignores wizard multi-model selections and runs single model", async () => {
     promptMock.mockResolvedValue({
-      promptInput: 'Multi',
-      mode: 'browser',
+      promptInput: "Multi",
+      mode: "browser",
       model: DEFAULT_MODEL,
       models: ["gemini-3-pro"],
       files: [],
@@ -126,7 +126,9 @@ describe("askOracleFlow", () => {
     const config: UserConfig = {};
     await tui.askOracleFlow("0.4.1", config);
 
-    const creationArgs = initializeSessionMock.mock.calls[0]?.[0] as RunOracleOptions & { models?: string[] };
+    const creationArgs = initializeSessionMock.mock.calls[0]?.[0] as RunOracleOptions & {
+      models?: string[];
+    };
     expect(creationArgs.models).toBeUndefined();
   });
 });

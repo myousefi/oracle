@@ -3,8 +3,8 @@ import { runDryRunSummary } from "../../src/cli/dryRun.js";
 import type { RunOracleOptions } from "../../src/oracle.js";
 
 const baseRunOptions: RunOracleOptions = {
-  prompt: 'Explain the issue',
-  model: 'gpt-5.4-pro',
+  prompt: "Explain the issue",
+  model: "gpt-5.4-pro",
   file: [],
 };
 
@@ -23,9 +23,11 @@ describe("runDryRunSummary", () => {
         readFilesImpl: async () => [{ path: "/repo/notes.md", content: 'console.log("dry run")' }],
       },
     );
-    const header = log.mock.calls.find(([entry]) => String(entry).includes('would call gpt-5.4-pro'));
-    expect(header?.[0]).toContain('[dry-run]');
-    expect(log.mock.calls.some(([entry]) => String(entry).includes('File Token Usage'))).toBe(true);
+    const header = log.mock.calls.find(([entry]) =>
+      String(entry).includes("would call gpt-5.4-pro"),
+    );
+    expect(header?.[0]).toContain("[dry-run]");
+    expect(log.mock.calls.some(([entry]) => String(entry).includes("File Token Usage"))).toBe(true);
   });
 
   test("prints browser attachment summary", async () => {

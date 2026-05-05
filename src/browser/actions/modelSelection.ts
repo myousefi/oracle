@@ -45,9 +45,11 @@ export async function ensureModelSelection(
       const availableHint = available.length > 0 ? ` Available: ${available.join(", ")}.` : "";
       const tempHint =
         isTemporary && /\bpro\b/i.test(desiredModel)
-          ? ' You are in Temporary Chat mode; Pro models are not available there. Remove "temporary-chat=true" from --chatgpt-url or use a non-Pro model (e.g. gpt-5.4).'
-          : '';
-      throw new Error(`Unable to find model option matching "${desiredModel}" in the model switcher.${availableHint}${tempHint}`);
+          ? ' You are in Temporary Chat mode; Pro models are not available there. Remove "temporary-chat=true" from --chatgpt-url or use a non-Pro model (e.g. gpt-5.5).'
+          : "";
+      throw new Error(
+        `Unable to find model option matching "${desiredModel}" in the model switcher.${availableHint}${tempHint}`,
+      );
     }
     default: {
       await logDomFailure(Runtime, logger, "model-switcher-button");
@@ -98,7 +100,9 @@ function buildModelSelectionExpression(
       .map((token) => normalizeText(token))
       .filter(Boolean);
     const targetWords = normalizedTarget.split(' ').filter(Boolean);
-    const desiredVersion = normalizedTarget.includes('5 4')
+    const desiredVersion = normalizedTarget.includes('5 5')
+      ? '5-5'
+      : normalizedTarget.includes('5 4')
       ? '5-4'
       : normalizedTarget.includes('5 3')
         ? '5-3'
@@ -157,19 +161,28 @@ function buildModelSelectionExpression(
         return false;
       }
       const genericVariantOnly =
-        normalizedLabel === 'pro' || normalizedLabel === 'thinking' || normalizedLabel === 'instant';
+        normalizedLabel === 'pro' ||
+        normalizedLabel.startsWith('pro ') ||
+        normalizedLabel.endsWith(' pro') ||
+        normalizedLabel === 'thinking' ||
+        normalizedLabel.startsWith('thinking ') ||
+        normalizedLabel.endsWith(' thinking') ||
+        normalizedLabel === 'instant' ||
+        normalizedLabel.startsWith('instant ') ||
+        normalizedLabel.endsWith(' instant');
       if (desiredVersion && !genericVariantOnly) {
+        if (desiredVersion === '5-5' && !normalizedLabel.includes('5 5')) return false;
         if (desiredVersion === '5-4' && !normalizedLabel.includes('5 4')) return false;
         if (desiredVersion === '5-3' && !normalizedLabel.includes('5 3')) return false;
         if (desiredVersion === '5-2' && !normalizedLabel.includes('5 2')) return false;
         if (desiredVersion === '5-1' && !normalizedLabel.includes('5 1')) return false;
         if (desiredVersion === '5-0' && !normalizedLabel.includes('5 0')) return false;
       }
-      if (wantsPro && normalizedLabel !== 'pro' && !normalizedLabel.includes(' pro')) return false;
-      if (wantsInstant && !normalizedLabel.includes('instant')) return false;
-      if (wantsThinking && !normalizedLabel.includes('thinking')) return false;
+      if (wantsPro && !(normalizedLabel === 'pro' || normalizedLabel.startsWith('pro ') || normalizedLabel.includes(' pro'))) return false;
+      if (wantsInstant && !(normalizedLabel === 'instant' || normalizedLabel.startsWith('instant ') || normalizedLabel.includes('instant'))) return false;
+      if (wantsThinking && !(normalizedLabel === 'thinking' || normalizedLabel.startsWith('thinking ') || normalizedLabel.includes('thinking'))) return false;
       // Also reject if button has variants we DON'T want
-      if (!wantsPro && (normalizedLabel === 'pro' || normalizedLabel.includes(' pro'))) return false;
+      if (!wantsPro && (normalizedLabel === 'pro' || normalizedLabel.startsWith('pro ') || normalizedLabel.includes(' pro'))) return false;
       if (!wantsInstant && normalizedLabel.includes('instant')) return false;
       if (!wantsThinking && normalizedLabel.includes('thinking')) return false;
       return true;
@@ -221,7 +234,13 @@ function buildModelSelectionExpression(
       const normalizedTestId = (testid ?? '').toLowerCase();
       if (normalizedTestId) {
         if (desiredVersion) {
-          // data-testid strings have been observed with both dotted and dashed versions (e.g. gpt-5.4-pro vs gpt-5-4-pro).
+          // data-testid strings have been observed with both dotted and dashed versions (e.g. gpt-5.5-pro vs gpt-5-5-pro).
+          const has55 =
+            normalizedTestId.includes('5-5') ||
+            normalizedTestId.includes('5.5') ||
+            normalizedTestId.includes('gpt-5-5') ||
+            normalizedTestId.includes('gpt-5.5') ||
+            normalizedTestId.includes('gpt55');
           const has54 =
             normalizedTestId.includes('5-4') ||
             normalizedTestId.includes('5.4') ||
@@ -240,12 +259,6 @@ function buildModelSelectionExpression(
             normalizedTestId.includes('gpt-5-2') ||
             normalizedTestId.includes('gpt-5.2') ||
             normalizedTestId.includes('gpt52');
-          const has54 =
-            normalizedTestId.includes('5-4') ||
-            normalizedTestId.includes('5.4') ||
-            normalizedTestId.includes('gpt-5-4') ||
-            normalizedTestId.includes('gpt-5.4') ||
-            normalizedTestId.includes('gpt54');
           const has51 =
             normalizedTestId.includes('5-1') ||
             normalizedTestId.includes('5.1') ||
@@ -258,9 +271,11 @@ function buildModelSelectionExpression(
             normalizedTestId.includes('gpt-5-0') ||
             normalizedTestId.includes('gpt-5.0') ||
             normalizedTestId.includes('gpt50');
-          const candidateVersion = has54
-            ? '5-4'
-            : has53
+          const candidateVersion = has55
+            ? '5-5'
+            : has54
+              ? '5-4'
+              : has53
               ? '5-3'
               : has52
                 ? '5-2'
@@ -322,7 +337,7 @@ function buildModelSelectionExpression(
       }
       // If the caller didn't explicitly ask for Pro, prefer non-Pro options when both exist.
       if (wantsPro) {
-        if (!normalizedText.includes(' pro')) {
+        if (!(normalizedText === 'pro' || normalizedText.startsWith('pro ') || normalizedText.includes(' pro'))) {
           score -= 80;
         }
       } else if (normalizedText.includes(' pro')) {
@@ -493,87 +508,102 @@ function buildModelMatchersLiteral(targetModel: string): {
     testIdTokens.add(`gpt${compactNum}`);
   };
 
-  if (hasVersion('5.4', '5-4', '54')) {
-    addVersionTokens('5.4', '5-4', '54');
-    if (base.includes('thinking')) {
-      push('thinking', labelTokens);
-      testIdTokens.add('model-switcher-gpt-5-4-thinking');
-      testIdTokens.add('gpt-5-4-thinking');
-      testIdTokens.add('gpt-5.4-thinking');
+  if (hasVersion("5.5", "5-5", "55")) {
+    addVersionTokens("5.5", "5-5", "55");
+    if (base.includes("thinking")) {
+      push("thinking", labelTokens);
+      testIdTokens.add("model-switcher-gpt-5-5-thinking");
+      testIdTokens.add("gpt-5-5-thinking");
+      testIdTokens.add("gpt-5.5-thinking");
     }
-    if (base.includes('pro')) {
-      testIdTokens.add('model-switcher-gpt-5-4-pro');
-      testIdTokens.add('gpt-5-4-pro');
-      testIdTokens.add('gpt-5.4-pro');
-      testIdTokens.add('gpt54pro');
-    }
-  }
-  if (hasVersion('5.3', '5-3', '53')) {
-    addVersionTokens('5.3', '5-3', '53');
-    if (base.includes('instant')) {
-      push('instant', labelTokens);
-      push('for everyday chats', labelTokens);
-      testIdTokens.add('model-switcher-gpt-5-3');
-      testIdTokens.add('model-switcher-gpt-5-3-instant');
-      testIdTokens.add('gpt-5-3-instant');
-      testIdTokens.add('gpt-5.3-instant');
-    }
-    if (!base.includes('thinking') && !base.includes('instant') && !base.includes('pro')) {
-      testIdTokens.add('model-switcher-gpt-5-3');
+    if (base.includes("pro")) {
+      testIdTokens.add("model-switcher-gpt-5-5-pro");
+      testIdTokens.add("gpt-5-5-pro");
+      testIdTokens.add("gpt-5.5-pro");
+      testIdTokens.add("gpt55pro");
     }
   }
-  if (hasVersion('5.2', '5-2', '52')) {
-    addVersionTokens('5.2', '5-2', '52');
-    if (base.includes('thinking')) {
-      push('thinking', labelTokens);
-      testIdTokens.add('model-switcher-gpt-5-2-thinking');
-      testIdTokens.add('gpt-5-2-thinking');
-      testIdTokens.add('gpt-5.2-thinking');
+  if (hasVersion("5.4", "5-4", "54")) {
+    addVersionTokens("5.4", "5-4", "54");
+    if (base.includes("thinking")) {
+      push("thinking", labelTokens);
+      testIdTokens.add("model-switcher-gpt-5-4-thinking");
+      testIdTokens.add("gpt-5-4-thinking");
+      testIdTokens.add("gpt-5.4-thinking");
     }
-    if (base.includes('instant')) {
-      push('instant', labelTokens);
-      testIdTokens.add('model-switcher-gpt-5-2-instant');
-      testIdTokens.add('gpt-5-2-instant');
-      testIdTokens.add('gpt-5.2-instant');
-    }
-    if (!base.includes('thinking') && !base.includes('instant') && !base.includes('pro')) {
-      testIdTokens.add('model-switcher-gpt-5-2');
+    if (base.includes("pro")) {
+      testIdTokens.add("model-switcher-gpt-5-4-pro");
+      testIdTokens.add("gpt-5-4-pro");
+      testIdTokens.add("gpt-5.4-pro");
+      testIdTokens.add("gpt54pro");
     }
   }
-  if (hasVersion('5.1', '5-1', '51')) {
-    addVersionTokens('5.1', '5-1', '51');
-    if (base.includes('thinking')) {
-      push('thinking', labelTokens);
-      testIdTokens.add('model-switcher-gpt-5-1-thinking');
-      testIdTokens.add('gpt-5-1-thinking');
-      testIdTokens.add('gpt-5.1-thinking');
+  if (hasVersion("5.3", "5-3", "53")) {
+    addVersionTokens("5.3", "5-3", "53");
+    if (base.includes("instant")) {
+      push("instant", labelTokens);
+      push("for everyday chats", labelTokens);
+      testIdTokens.add("model-switcher-gpt-5-3");
+      testIdTokens.add("model-switcher-gpt-5-3-instant");
+      testIdTokens.add("gpt-5-3-instant");
+      testIdTokens.add("gpt-5.3-instant");
     }
-    if (base.includes('instant')) {
-      push('instant', labelTokens);
-      testIdTokens.add('model-switcher-gpt-5-1-instant');
-      testIdTokens.add('gpt-5-1-instant');
-      testIdTokens.add('gpt-5.1-instant');
-    }
-    if (base.includes('pro')) {
-      testIdTokens.add('model-switcher-gpt-5-1-pro');
-      testIdTokens.add('gpt-5-1-pro');
-      testIdTokens.add('gpt-5.1-pro');
-      testIdTokens.add('gpt51pro');
+    if (!base.includes("thinking") && !base.includes("instant") && !base.includes("pro")) {
+      testIdTokens.add("model-switcher-gpt-5-3");
     }
   }
-  if (hasVersion('5.0', '5-0', '50')) {
-    addVersionTokens('5.0', '5-0', '50');
+  if (hasVersion("5.2", "5-2", "52")) {
+    addVersionTokens("5.2", "5-2", "52");
+    if (base.includes("thinking")) {
+      push("thinking", labelTokens);
+      testIdTokens.add("model-switcher-gpt-5-2-thinking");
+      testIdTokens.add("gpt-5-2-thinking");
+      testIdTokens.add("gpt-5.2-thinking");
+    }
+    if (base.includes("instant")) {
+      push("instant", labelTokens);
+      testIdTokens.add("model-switcher-gpt-5-2-instant");
+      testIdTokens.add("gpt-5-2-instant");
+      testIdTokens.add("gpt-5.2-instant");
+    }
+    if (!base.includes("thinking") && !base.includes("instant") && !base.includes("pro")) {
+      testIdTokens.add("model-switcher-gpt-5-2");
+    }
+  }
+  if (hasVersion("5.1", "5-1", "51")) {
+    addVersionTokens("5.1", "5-1", "51");
+    if (base.includes("thinking")) {
+      push("thinking", labelTokens);
+      testIdTokens.add("model-switcher-gpt-5-1-thinking");
+      testIdTokens.add("gpt-5-1-thinking");
+      testIdTokens.add("gpt-5.1-thinking");
+    }
+    if (base.includes("instant")) {
+      push("instant", labelTokens);
+      testIdTokens.add("model-switcher-gpt-5-1-instant");
+      testIdTokens.add("gpt-5-1-instant");
+      testIdTokens.add("gpt-5.1-instant");
+    }
+    if (base.includes("pro")) {
+      testIdTokens.add("model-switcher-gpt-5-1-pro");
+      testIdTokens.add("gpt-5-1-pro");
+      testIdTokens.add("gpt-5.1-pro");
+      testIdTokens.add("gpt51pro");
+    }
+  }
+  if (hasVersion("5.0", "5-0", "50")) {
+    addVersionTokens("5.0", "5-0", "50");
   }
   // Pro / research variants
-  if (base.includes('pro')) {
-    push('proresearch', labelTokens);
-    push('research grade', labelTokens);
-    push('research grade intelligence', labelTokens);
-    push('advanced reasoning', labelTokens);
-    if (base.includes('5.0') || base.includes('5-0') || base.includes('50')) {
-      testIdTokens.add('gpt-5.0-pro');
-      testIdTokens.add('gpt-5-0-pro');
-      testIdTokens.add('gpt50pro');
+  if (base.includes("pro")) {
+    push("proresearch", labelTokens);
+    push("research grade", labelTokens);
+    push("research grade intelligence", labelTokens);
+    push("advanced reasoning", labelTokens);
+    if (base.includes("5.0") || base.includes("5-0") || base.includes("50")) {
+      testIdTokens.add("gpt-5.0-pro");
+      testIdTokens.add("gpt-5-0-pro");
+      testIdTokens.add("gpt50pro");
     }
     if (base.includes("5.0") || base.includes("5-0") || base.includes("50")) {
       testIdTokens.add("gpt-5.0-pro");
@@ -600,7 +630,7 @@ function buildModelMatchersLiteral(targetModel: string): {
   push(hyphenated, testIdTokens);
   push(collapsed, testIdTokens);
   push(dotless, testIdTokens);
-  // data-testid values observed in the ChatGPT picker (e.g., model-switcher-gpt-5-4-pro)
+  // data-testid values observed in the ChatGPT picker (e.g., model-switcher-gpt-5-5-pro)
   push(`model-switcher-${hyphenated}`, testIdTokens);
   push(`model-switcher-${collapsed}`, testIdTokens);
   push(`model-switcher-${dotless}`, testIdTokens);

@@ -1,9 +1,13 @@
 import type { BrowserModelStrategy } from "./types.js";
 
-export const CHATGPT_URL = 'https://chatgpt.com/';
-export const DEFAULT_MODEL_TARGET = 'GPT-5.4 Pro';
-export const DEFAULT_MODEL_STRATEGY: BrowserModelStrategy = 'select';
-export const COOKIE_URLS = ['https://chatgpt.com', 'https://chat.openai.com', 'https://atlas.openai.com'];
+export const CHATGPT_URL = "https://chatgpt.com/";
+export const DEFAULT_MODEL_TARGET = "GPT-5.5 Pro";
+export const DEFAULT_MODEL_STRATEGY: BrowserModelStrategy = "select";
+export const COOKIE_URLS = [
+  "https://chatgpt.com",
+  "https://chat.openai.com",
+  "https://atlas.openai.com",
+];
 
 export const INPUT_SELECTORS = [
   'textarea[data-id="prompt-textarea"]',
@@ -74,7 +78,8 @@ export const SEND_BUTTON_SELECTORS = [
   'button[aria-label*="Send"]',
 ];
 export const SEND_BUTTON_SELECTOR = SEND_BUTTON_SELECTORS[0];
-export const MODEL_BUTTON_SELECTOR = '[data-testid="model-switcher-dropdown-button"]';
+export const MODEL_BUTTON_SELECTOR =
+  '[data-testid="model-switcher-dropdown-button"], button.__composer-pill[aria-haspopup="menu"], button[aria-haspopup="menu"][class*="composer-pill"]';
 export const COPY_BUTTON_SELECTOR = 'button[data-testid="copy-turn-action-button"]';
 // Action buttons that only appear once a turn has finished rendering.
 export const FINISHED_ACTIONS_SELECTOR =

@@ -35,7 +35,7 @@ const runGeminiWebWithFallback = vi.fn<(...args: unknown[]) => Promise<unknown>>
   thoughts: "thinking",
   metadata: { cid: "1" },
   images: [],
-  effectiveModel: "gemini-3-pro",
+  effectiveModel: "gemini-3.1-pro",
 }));
 
 const saveFirstGeminiImageFromOutput = vi.fn<(...args: unknown[]) => Promise<unknown>>(
@@ -46,19 +46,19 @@ const saveFirstGeminiImageFromOutput = vi.fn<(...args: unknown[]) => Promise<unk
 );
 
 const runGeminiDeepResearchBrowser = vi.fn<(...args: unknown[]) => Promise<unknown>>(async () => ({
-  answerText: 'deep research report',
-  answerMarkdown: 'deep research report',
+  answerText: "deep research report",
+  answerMarkdown: "deep research report",
   tookMs: 1234,
   answerTokens: 100,
   answerChars: 20,
 }));
 
-vi.mock('../../src/gemini-web/client.js', () => ({
+vi.mock("../../src/gemini-web/client.js", () => ({
   runGeminiWebWithFallback,
   saveFirstGeminiImageFromOutput,
 }));
 
-vi.mock('../../src/gemini-web/deepResearchExecutor.js', () => ({
+vi.mock("../../src/gemini-web/deepResearchExecutor.js", () => ({
   runGeminiDeepResearchBrowser,
 }));
 
@@ -229,13 +229,13 @@ describe("gemini-web executor", () => {
     const result = await exec({
       prompt: "a cute robot holding a banana",
       attachments: [{ path: "/tmp/attach.txt", displayPath: "attach.txt" }],
-      config: { desiredModel: "Gemini 3 Pro", chromeProfile: "Default" },
+      config: { desiredModel: "Gemini 3.1 Pro", chromeProfile: "Default" },
       log: () => {},
     });
 
     expect(runGeminiWebWithFallback).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: "gemini-3-pro",
+        model: "gemini-3.1-pro",
         prompt: "Generate an image: a cute robot holding a banana (aspect ratio: 1:1)",
         files: ["/tmp/attach.txt"],
       }),
@@ -263,7 +263,7 @@ describe("gemini-web executor", () => {
         thoughts: null,
         metadata: { chat: "meta" },
         images: [],
-        effectiveModel: "gemini-3-pro",
+        effectiveModel: "gemini-3.1-pro",
       })
       .mockResolvedValueOnce({
         rawResponseText: "",
@@ -271,14 +271,14 @@ describe("gemini-web executor", () => {
         thoughts: null,
         metadata: null,
         images: [],
-        effectiveModel: "gemini-3-pro",
+        effectiveModel: "gemini-3.1-pro",
       });
 
     const exec = createGeminiWebExecutor({ editImage: inPath, outputPath: outPath });
     await exec({
       prompt: "add sunglasses",
       attachments: [],
-      config: { desiredModel: "Gemini 3 Pro", chromeProfile: "Default" },
+      config: { desiredModel: "Gemini 3.1 Pro", chromeProfile: "Default" },
       log: () => {},
     });
 
@@ -308,7 +308,7 @@ describe("gemini-web executor", () => {
     await exec({
       prompt: "hello",
       attachments: [],
-      config: { desiredModel: "Gemini 3 Pro", chromeCookiePath: "/tmp/Cookies" },
+      config: { desiredModel: "Gemini 3.1 Pro", chromeCookiePath: "/tmp/Cookies" },
       log: () => {},
     });
     expect(getCookies).toHaveBeenCalledWith(
@@ -323,7 +323,7 @@ describe("gemini-web executor", () => {
       prompt: "hello",
       attachments: [],
       config: {
-        desiredModel: "Gemini 3 Pro",
+        desiredModel: "Gemini 3.1 Pro",
         cookieSync: false,
         inlineCookies: [
           { name: "__Secure-1PSID", value: "psid", domain: "google.com", path: "/" },
@@ -336,21 +336,21 @@ describe("gemini-web executor", () => {
     expect(getCookies).not.toHaveBeenCalled();
   });
 
-  it('routes deep research runs through the browser executor branch', async () => {
-    const { createGeminiWebExecutor } = await import('../../src/gemini-web/executor.js');
+  it("routes deep research runs through the browser executor branch", async () => {
+    const { createGeminiWebExecutor } = await import("../../src/gemini-web/executor.js");
     const exec = createGeminiWebExecutor({ deepResearch: true });
     const result = await exec({
-      prompt: 'research amd diffusion inference',
+      prompt: "research amd diffusion inference",
       attachments: [],
-      config: { desiredModel: 'gemini-3-pro' },
+      config: { desiredModel: "gemini-3.1-pro" },
       log: () => {},
     });
 
     expect(runGeminiDeepResearchBrowser).toHaveBeenCalledWith(
-      expect.objectContaining({ prompt: 'research amd diffusion inference' }),
+      expect.objectContaining({ prompt: "research amd diffusion inference" }),
       expect.objectContaining({ deepResearch: true }),
     );
     expect(runGeminiWebWithFallback).not.toHaveBeenCalled();
-    expect(result.answerText).toBe('deep research report');
+    expect(result.answerText).toBe("deep research report");
   });
 });

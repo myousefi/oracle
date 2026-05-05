@@ -1,6 +1,6 @@
-import { mkdtemp, mkdir, rm } from 'node:fs/promises';
-import path from 'node:path';
-import os from 'node:os';
+import { mkdtemp, mkdir, rm } from "node:fs/promises";
+import path from "node:path";
+import os from "node:os";
 import type {
   BrowserReport,
   BrowserReportHeading,
@@ -11,10 +11,10 @@ import type {
   BrowserRunResult,
   BrowserLogger,
   ChromeClient,
-} from '../browser/types.js';
-import { BrowserAutomationError } from '../oracle/errors.js';
-import { resolveBrowserConfig } from '../browser/config.js';
-import { DEFAULT_ORACLE_BROWSER_PROFILE_DIR } from '../browser/profileDefaults.js';
+} from "../browser/types.js";
+import { BrowserAutomationError } from "../oracle/errors.js";
+import { resolveBrowserConfig } from "../browser/config.js";
+import { DEFAULT_ORACLE_BROWSER_PROFILE_DIR } from "../browser/profileDefaults.js";
 import {
   launchChrome,
   registerTerminationHooks,
@@ -23,10 +23,13 @@ import {
   connectToRemoteChrome,
   closeRemoteChromeTarget,
   closeTab,
-} from '../browser/chromeLifecycle.js';
-import { syncCookies } from '../browser/cookies.js';
-import { delay, estimateTokenCount } from '../browser/utils.js';
-import { installJavaScriptDialogAutoDismissal, ensureNotBlocked } from '../browser/actions/navigation.js';
+} from "../browser/chromeLifecycle.js";
+import { syncCookies } from "../browser/cookies.js";
+import { delay, estimateTokenCount } from "../browser/utils.js";
+import {
+  installJavaScriptDialogAutoDismissal,
+  ensureNotBlocked,
+} from "../browser/actions/navigation.js";
 import {
   cleanupStaleProfileState,
   readChromePid,
@@ -35,11 +38,11 @@ import {
   verifyDevToolsReachable,
   writeChromePid,
   writeDevToolsActivePort,
-} from '../browser/profileState.js';
-import type { LaunchedChrome } from 'chrome-launcher';
-import type { GeminiWebOptions } from './types.js';
+} from "../browser/profileState.js";
+import type { LaunchedChrome } from "chrome-launcher";
+import type { GeminiWebOptions } from "./types.js";
 
-const DEFAULT_GEMINI_URL = 'https://gemini.google.com/app';
+const DEFAULT_GEMINI_URL = "https://gemini.google.com/app";
 const GEMINI_TEXTBOX_SELECTOR =
   '[role="textbox"][aria-label="Enter a prompt for Gemini"], [aria-label="Enter a prompt for Gemini"][contenteditable="true"]';
 const GEMINI_SEND_BUTTON_SELECTOR = 'button[aria-label="Send message"]';
@@ -100,20 +103,20 @@ interface GeminiDomReportPayload {
 }
 
 function normalizeWhitespace(value: string): string {
-  return value.replace(/\s+/g, ' ').trim();
+  return value.replace(/\s+/g, " ").trim();
 }
 
 function escapeMarkdownText(value: string): string {
-  return value.replace(/([\\`*_[\]<>])/g, '\\$1');
+  return value.replace(/([\\`*_[\]<>])/g, "\\$1");
 }
 
 function stripGeminiWindowSuffix(value: string): string {
-  return value.replace(/\bOpens in a new window\b/gi, '').trim();
+  return value.replace(/\bOpens in a new window\b/gi, "").trim();
 }
 
 function cleanGeminiSourceTitle(title: string, domain?: string | null): string {
   const cleaned = stripGeminiWindowSuffix(normalizeWhitespace(title));
-  if (!cleaned) return domain?.trim() || 'Source';
+  if (!cleaned) return domain?.trim() || "Source";
   if (domain && cleaned.toLowerCase().startsWith(domain.toLowerCase())) {
     const stripped = cleaned.slice(domain.length).trim();
     if (stripped) return stripped;
@@ -174,7 +177,10 @@ export function normalizeGeminiReport(raw: GeminiDomReportPayload): BrowserRepor
   };
 }
 
-export function composeGeminiReportMarkdown(report: BrowserReport, thoughts?: string | null): string {
+export function composeGeminiReportMarkdown(
+  report: BrowserReport,
+  thoughts?: string | null,
+): string {
   const body = report.text.trim();
   let markdown = body;
 
@@ -183,14 +189,14 @@ export function composeGeminiReportMarkdown(report: BrowserReport, thoughts?: st
   }
 
   if ((report.sources?.length ?? 0) > 0) {
-    const sourcesMarkdown = report.sources!
-      .map((group) => {
+    const sourcesMarkdown = report
+      .sources!.map((group) => {
         const links = group.links
           .map((link) => `- [${escapeMarkdownText(link.title)}](${link.url})`)
-          .join('\n');
+          .join("\n");
         return `### ${group.title}\n\n${links}`;
       })
-      .join('\n\n');
+      .join("\n\n");
     markdown += `\n\n## Sources\n\n${sourcesMarkdown}`;
   }
 
@@ -199,16 +205,16 @@ export function composeGeminiReportMarkdown(report: BrowserReport, thoughts?: st
 
 function splitGeminiResponse(raw: string): GeminiParsedResponse {
   const normalized = normalizeWhitespace(raw);
-  const marker = 'Gemini said';
+  const marker = "Gemini said";
   const markerIndex = normalized.indexOf(marker);
   if (markerIndex === -1) {
-    const body = normalized.replace(/^Show thinking/i, '').trim();
+    const body = normalized.replace(/^Show thinking/i, "").trim();
     return { body, thoughts: null };
   }
 
   const thoughts = normalized
     .slice(0, markerIndex)
-    .replace(/^Show thinking/i, '')
+    .replace(/^Show thinking/i, "")
     .trim();
   const body = normalized.slice(markerIndex + marker.length).trim();
   return {
@@ -218,17 +224,17 @@ function splitGeminiResponse(raw: string): GeminiParsedResponse {
 }
 
 function isWsl(): boolean {
-  if (process.platform !== 'linux') return false;
+  if (process.platform !== "linux") return false;
   if (process.env.WSL_DISTRO_NAME) return true;
-  return os.release().toLowerCase().includes('microsoft');
+  return os.release().toLowerCase().includes("microsoft");
 }
 
 async function resolveUserDataBaseDir(): Promise<string> {
   if (isWsl()) {
     const candidates = [
-      '/mnt/c/Users/Public/AppData/Local/Temp',
-      '/mnt/c/Temp',
-      '/mnt/c/Windows/Temp',
+      "/mnt/c/Users/Public/AppData/Local/Temp",
+      "/mnt/c/Temp",
+      "/mnt/c/Windows/Temp",
     ];
     for (const candidate of candidates) {
       try {
@@ -242,19 +248,26 @@ async function resolveUserDataBaseDir(): Promise<string> {
   return os.tmpdir();
 }
 
-async function maybeReuseRunningChrome(userDataDir: string, logger: BrowserLogger): Promise<LaunchedChrome | null> {
+async function maybeReuseRunningChrome(
+  userDataDir: string,
+  logger: BrowserLogger,
+): Promise<LaunchedChrome | null> {
   const port = await readDevToolsPort(userDataDir);
   if (!port) return null;
 
   const probe = await verifyDevToolsReachable({ port });
   if (!probe.ok) {
-    logger(`DevToolsActivePort found for ${userDataDir} but unreachable (${probe.error}); launching new Chrome.`);
-    await cleanupStaleProfileState(userDataDir, logger, { lockRemovalMode: 'if_oracle_pid_dead' });
+    logger(
+      `DevToolsActivePort found for ${userDataDir} but unreachable (${probe.error}); launching new Chrome.`,
+    );
+    await cleanupStaleProfileState(userDataDir, logger, { lockRemovalMode: "if_oracle_pid_dead" });
     return null;
   }
 
   const pid = await readChromePid(userDataDir);
-  logger(`Found running Chrome for ${userDataDir}; reusing (DevTools port ${port}${pid ? `, pid ${pid}` : ''})`);
+  logger(
+    `Found running Chrome for ${userDataDir}; reusing (DevTools port ${port}${pid ? `, pid ${pid}` : ""})`,
+  );
   return {
     port,
     pid: pid ?? undefined,
@@ -263,25 +276,28 @@ async function maybeReuseRunningChrome(userDataDir: string, logger: BrowserLogge
   } as unknown as LaunchedChrome;
 }
 
-async function waitForDocumentReady(Runtime: ChromeClient['Runtime'], timeoutMs: number): Promise<void> {
+async function waitForDocumentReady(
+  Runtime: ChromeClient["Runtime"],
+  timeoutMs: number,
+): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const state = await Runtime.evaluate({
-      expression: 'document.readyState',
+      expression: "document.readyState",
       returnByValue: true,
     }).catch(() => null);
     const value = state?.result?.value as string | undefined;
-    if (value === 'complete' || value === 'interactive') {
+    if (value === "complete" || value === "interactive") {
       return;
     }
     await delay(200);
   }
-  throw new Error('Timed out waiting for document readiness.');
+  throw new Error("Timed out waiting for document readiness.");
 }
 
 async function navigateToGemini(
-  Page: ChromeClient['Page'],
-  Runtime: ChromeClient['Runtime'],
+  Page: ChromeClient["Page"],
+  Runtime: ChromeClient["Runtime"],
   url: string,
   logger: BrowserLogger,
 ): Promise<void> {
@@ -290,7 +306,7 @@ async function navigateToGemini(
   await waitForDocumentReady(Runtime, 45_000);
 }
 
-async function dismissGeminiBanners(Runtime: ChromeClient['Runtime']): Promise<void> {
+async function dismissGeminiBanners(Runtime: ChromeClient["Runtime"]): Promise<void> {
   await Runtime.evaluate({
     expression: `(() => {
       const isVisible = (el) => {
@@ -319,7 +335,7 @@ async function dismissGeminiBanners(Runtime: ChromeClient['Runtime']): Promise<v
 }
 
 async function waitForGeminiComposerReady(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   timeoutMs: number,
   logger: BrowserLogger,
 ): Promise<void> {
@@ -353,14 +369,14 @@ async function waitForGeminiComposerReady(
       | { composerReady?: boolean; toolsReady?: boolean; href?: string }
       | undefined;
     if (value?.composerReady && value.toolsReady) {
-      logger('[gemini-web] Gemini composer ready');
+      logger("[gemini-web] Gemini composer ready");
       return;
     }
-    if (typeof value?.href === 'string' && /accounts\.google\.com/i.test(value.href)) {
+    if (typeof value?.href === "string" && /accounts\.google\.com/i.test(value.href)) {
       throw new BrowserAutomationError(
-        'Gemini login required. Sign into gemini.google.com in the opened Chrome window, then retry.',
+        "Gemini login required. Sign into gemini.google.com in the opened Chrome window, then retry.",
         {
-          stage: 'gemini-login',
+          stage: "gemini-login",
           url: value.href,
         },
       );
@@ -368,13 +384,13 @@ async function waitForGeminiComposerReady(
     await delay(250);
   }
 
-  throw new BrowserAutomationError('Timed out waiting for Gemini composer.', {
-    stage: 'gemini-composer',
+  throw new BrowserAutomationError("Timed out waiting for Gemini composer.", {
+    stage: "gemini-composer",
   });
 }
 
 async function ensureGeminiDeepResearchEnabled(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   logger: BrowserLogger,
 ): Promise<void> {
   const deadline = Date.now() + 15_000;
@@ -420,19 +436,19 @@ async function ensureGeminiDeepResearchEnabled(
     }).catch(() => null);
 
     const status = (result?.result?.value as { status?: string } | undefined)?.status;
-    if (status === 'selected') {
-      logger('[gemini-web] Deep research enabled');
+    if (status === "selected") {
+      logger("[gemini-web] Deep research enabled");
       return;
     }
     await delay(250);
   }
 
-  throw new BrowserAutomationError('Timed out enabling Gemini Deep Research.', {
-    stage: 'gemini-deep-research-toggle',
+  throw new BrowserAutomationError("Timed out enabling Gemini Deep Research.", {
+    stage: "gemini-deep-research-toggle",
   });
 }
 
-async function clearGeminiComposer(Runtime: ChromeClient['Runtime']): Promise<void> {
+async function clearGeminiComposer(Runtime: ChromeClient["Runtime"]): Promise<void> {
   await Runtime.evaluate({
     expression: `(() => {
       const node = document.querySelector(${JSON.stringify(GEMINI_TEXTBOX_SELECTOR)});
@@ -447,8 +463,8 @@ async function clearGeminiComposer(Runtime: ChromeClient['Runtime']): Promise<vo
 }
 
 async function setGeminiComposerText(
-  Runtime: ChromeClient['Runtime'],
-  Input: ChromeClient['Input'],
+  Runtime: ChromeClient["Runtime"],
+  Input: ChromeClient["Input"],
   prompt: string,
   logger: BrowserLogger,
 ): Promise<void> {
@@ -473,7 +489,7 @@ async function setGeminiComposerText(
   }).catch(() => null);
 
   if (!(focused?.result?.value as { focused?: boolean } | undefined)?.focused) {
-    throw new Error('Failed to focus Gemini composer.');
+    throw new Error("Failed to focus Gemini composer.");
   }
 
   const inserted = await Runtime.evaluate({
@@ -481,7 +497,7 @@ async function setGeminiComposerText(
     returnByValue: true,
   }).catch(() => null);
   if (!inserted?.result?.value) {
-    await Input.insertText({ text: prompt.replace(/\n/g, '\r') });
+    await Input.insertText({ text: prompt.replace(/\n/g, "\r") });
   }
   await delay(200);
 
@@ -492,9 +508,9 @@ async function setGeminiComposerText(
     })()`,
     returnByValue: true,
   }).catch(() => null);
-  const current = String(verify?.result?.value ?? '');
+  const current = String(verify?.result?.value ?? "");
   if (!current.trim()) {
-    logger('[gemini-web] composer empty after insertText; forcing textContent');
+    logger("[gemini-web] composer empty after insertText; forcing textContent");
     await Runtime.evaluate({
       expression: `(() => {
         const node = document.querySelector(${JSON.stringify(GEMINI_TEXTBOX_SELECTOR)});
@@ -508,8 +524,8 @@ async function setGeminiComposerText(
 }
 
 async function submitGeminiPrompt(
-  Runtime: ChromeClient['Runtime'],
-  Input: ChromeClient['Input'],
+  Runtime: ChromeClient["Runtime"],
+  Input: ChromeClient["Input"],
   prompt: string,
   logger: BrowserLogger,
 ): Promise<void> {
@@ -526,14 +542,28 @@ async function submitGeminiPrompt(
   }).catch(() => null);
 
   if (!clicked?.result?.value) {
-    logger('[gemini-web] send button not found; falling back to Enter key');
-    await Input.dispatchKeyEvent({ type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 });
-    await Input.dispatchKeyEvent({ type: 'char', text: '\r' });
-    await Input.dispatchKeyEvent({ type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 });
+    logger("[gemini-web] send button not found; falling back to Enter key");
+    await Input.dispatchKeyEvent({
+      type: "keyDown",
+      key: "Enter",
+      code: "Enter",
+      windowsVirtualKeyCode: 13,
+      nativeVirtualKeyCode: 13,
+    });
+    await Input.dispatchKeyEvent({ type: "char", text: "\r" });
+    await Input.dispatchKeyEvent({
+      type: "keyUp",
+      key: "Enter",
+      code: "Enter",
+      windowsVirtualKeyCode: 13,
+      nativeVirtualKeyCode: 13,
+    });
   }
 }
 
-async function readGeminiResearchState(Runtime: ChromeClient['Runtime']): Promise<GeminiResearchState> {
+async function readGeminiResearchState(
+  Runtime: ChromeClient["Runtime"],
+): Promise<GeminiResearchState> {
   const result = await Runtime.evaluate({
     expression: `(() => {
       const normalize = (value) => String(value || '').replace(/\\s+/g, ' ').trim();
@@ -565,7 +595,9 @@ async function readGeminiResearchState(Runtime: ChromeClient['Runtime']): Promis
   return result.result.value as GeminiResearchState;
 }
 
-async function readGeminiStructuredReport(Runtime: ChromeClient['Runtime']): Promise<BrowserReport | null> {
+async function readGeminiStructuredReport(
+  Runtime: ChromeClient["Runtime"],
+): Promise<BrowserReport | null> {
   const result = await Runtime.evaluate({
     expression: `(() => {
       const normalize = (value) => String(value || '').replace(/\\s+/g, ' ').trim();
@@ -661,18 +693,20 @@ async function readGeminiStructuredReport(Runtime: ChromeClient['Runtime']): Pro
 }
 
 async function waitForGeminiResearchPlan(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   timeoutMs: number,
 ): Promise<GeminiResearchState> {
   const deadline = Date.now() + timeoutMs;
   let lastError: string | null = null;
   while (Date.now() < deadline) {
     const state = await readGeminiResearchState(Runtime);
-    const plan = state.responses.find((response) => response.hasStartResearch && !response.startResearchDisabled);
+    const plan = state.responses.find(
+      (response) => response.hasStartResearch && !response.startResearchDisabled,
+    );
     if (plan) {
       return state;
     }
-    const latestRaw = state.responses.at(-1)?.raw ?? '';
+    const latestRaw = state.responses.at(-1)?.raw ?? "";
     if (/something went wrong/i.test(latestRaw)) {
       lastError = latestRaw;
     }
@@ -682,13 +716,13 @@ async function waitForGeminiResearchPlan(
   throw new BrowserAutomationError(
     lastError
       ? `Gemini Deep Research failed before producing a plan: ${lastError}`
-      : 'Timed out waiting for Gemini Deep Research plan.',
-    { stage: 'gemini-deep-research-plan' },
+      : "Timed out waiting for Gemini Deep Research plan.",
+    { stage: "gemini-deep-research-plan" },
   );
 }
 
 async function clickGeminiStartResearch(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   logger: BrowserLogger,
 ): Promise<void> {
   const deadline = Date.now() + 15_000;
@@ -709,19 +743,19 @@ async function clickGeminiStartResearch(
       returnByValue: true,
     }).catch(() => null);
     if ((clicked?.result?.value as { clicked?: boolean } | undefined)?.clicked) {
-      logger('[gemini-web] Approved Gemini Deep Research plan');
+      logger("[gemini-web] Approved Gemini Deep Research plan");
       return;
     }
     await delay(250);
   }
 
-  throw new BrowserAutomationError('Timed out trying to start Gemini Deep Research.', {
-    stage: 'gemini-deep-research-start',
+  throw new BrowserAutomationError("Timed out trying to start Gemini Deep Research.", {
+    stage: "gemini-deep-research-start",
   });
 }
 
 async function waitForGeminiResearchReport(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   timeoutMs: number,
 ): Promise<{ report: BrowserReport; thoughts: string | null }> {
   const deadline = Date.now() + timeoutMs;
@@ -733,7 +767,7 @@ async function waitForGeminiResearchReport(
   while (Date.now() < deadline) {
     const state = await readGeminiResearchState(Runtime);
     const latest = state.responses.at(-1);
-    const parsed = splitGeminiResponse(latest?.raw ?? '');
+    const parsed = splitGeminiResponse(latest?.raw ?? "");
     const candidate = parsed.body;
     const structuredReport = await readGeminiStructuredReport(Runtime);
     const reportText = structuredReport?.text.trim() || candidate;
@@ -750,7 +784,7 @@ async function waitForGeminiResearchReport(
         lastReport = structuredReport ?? {
           title: null,
           text: reportText,
-          html: '',
+          html: "",
           headings: [],
           tables: [],
           sources: [],
@@ -765,7 +799,7 @@ async function waitForGeminiResearchReport(
       lastReport = structuredReport ?? {
         title: null,
         text: reportText,
-        html: '',
+        html: "",
         headings: [],
         tables: [],
         sources: [],
@@ -781,8 +815,8 @@ async function waitForGeminiResearchReport(
     return { report: lastReport!, thoughts: lastThoughts };
   }
 
-  throw new BrowserAutomationError('Timed out waiting for Gemini Deep Research report.', {
-    stage: 'gemini-deep-research-report',
+  throw new BrowserAutomationError("Timed out waiting for Gemini Deep Research report.", {
+    stage: "gemini-deep-research-report",
   });
 }
 
@@ -792,22 +826,33 @@ export async function runGeminiDeepResearchBrowser(
 ): Promise<BrowserRunResult> {
   const promptText = runOptions.prompt?.trim();
   if (!promptText) {
-    throw new Error('Prompt text is required when using Gemini Deep Research.');
+    throw new Error("Prompt text is required when using Gemini Deep Research.");
   }
   if ((runOptions.attachments?.length ?? 0) > 0) {
-    throw new BrowserAutomationError('Gemini Deep Research does not support browser uploads yet. Retry without files.', {
-      stage: 'gemini-deep-research-attachments',
-    });
+    throw new BrowserAutomationError(
+      "Gemini Deep Research does not support browser uploads yet. Retry without files.",
+      {
+        stage: "gemini-deep-research-attachments",
+      },
+    );
   }
   if (runOptions.fallbackSubmission?.attachments?.length) {
-    throw new BrowserAutomationError('Gemini Deep Research does not support fallback browser uploads yet. Retry without files.', {
-      stage: 'gemini-deep-research-attachments',
-    });
-  }
-  if (geminiOptions.youtube || geminiOptions.generateImage || geminiOptions.editImage || geminiOptions.outputPath) {
     throw new BrowserAutomationError(
-      'Gemini Deep Research cannot be combined with --youtube, --generate-image, --edit-image, or --output.',
-      { stage: 'gemini-deep-research-options' },
+      "Gemini Deep Research does not support fallback browser uploads yet. Retry without files.",
+      {
+        stage: "gemini-deep-research-attachments",
+      },
+    );
+  }
+  if (
+    geminiOptions.youtube ||
+    geminiOptions.generateImage ||
+    geminiOptions.editImage ||
+    geminiOptions.outputPath
+  ) {
+    throw new BrowserAutomationError(
+      "Gemini Deep Research cannot be combined with --youtube, --generate-image, --edit-image, or --output.",
+      { stage: "gemini-deep-research-options" },
     );
   }
 
@@ -819,12 +864,14 @@ export async function runGeminiDeepResearchBrowser(
     ...(runOptions.config ?? {}),
     url: DEFAULT_GEMINI_URL,
     chatgptUrl: DEFAULT_GEMINI_URL,
-    modelStrategy: 'ignore',
+    modelStrategy: "ignore",
   });
   const targetUrl = config.url;
 
   if (config.desiredModel) {
-    logger(`[gemini-web] Gemini Deep Research uses the current Gemini web mode; desired model "${config.desiredModel}" is not auto-selected.`);
+    logger(
+      `[gemini-web] Gemini Deep Research uses the current Gemini web mode; desired model "${config.desiredModel}" is not auto-selected.`,
+    );
   }
 
   let lastUrl: string | undefined;
@@ -835,7 +882,7 @@ export async function runGeminiDeepResearchBrowser(
   let removeTerminationHooks: (() => void) | null = null;
   let removeDialogHandler: (() => void) | null = null;
   let connectionClosedUnexpectedly = false;
-  let runStatus: 'attempted' | 'complete' = 'attempted';
+  let runStatus: "attempted" | "complete" = "attempted";
 
   const emitRuntimeHint = async (host?: string, port?: number, targetId?: string) => {
     if (!runtimeHintCb || !port) return;
@@ -862,7 +909,7 @@ export async function runGeminiDeepResearchBrowser(
     : DEFAULT_ORACLE_BROWSER_PROFILE_DIR;
   const userDataDir = manualLogin
     ? manualProfileDir
-    : await mkdtemp(path.join(await resolveUserDataBaseDir(), 'oracle-gemini-deep-'));
+    : await mkdtemp(path.join(await resolveUserDataBaseDir(), "oracle-gemini-deep-"));
 
   if (manualLogin) {
     await mkdir(userDataDir, { recursive: true });
@@ -873,11 +920,13 @@ export async function runGeminiDeepResearchBrowser(
 
   const effectiveKeepBrowser = Boolean(config.keepBrowser);
   const remoteChromeConfig = config.remoteChrome;
-  const chromeHost = remoteChromeConfig?.host ?? '127.0.0.1';
+  const chromeHost = remoteChromeConfig?.host ?? "127.0.0.1";
 
   try {
     if (remoteChromeConfig) {
-      logger(`Connecting to remote Chrome at ${remoteChromeConfig.host}:${remoteChromeConfig.port}`);
+      logger(
+        `Connecting to remote Chrome at ${remoteChromeConfig.host}:${remoteChromeConfig.port}`,
+      );
       const connection = await connectToRemoteChrome(
         remoteChromeConfig.host,
         remoteChromeConfig.port,
@@ -886,17 +935,16 @@ export async function runGeminiDeepResearchBrowser(
       );
       client = connection.client;
       lastTargetId = connection.targetId ?? undefined;
-      client.on('disconnect', () => {
+      client.on("disconnect", () => {
         connectionClosedUnexpectedly = true;
       });
       await emitRuntimeHint(remoteChromeConfig.host, remoteChromeConfig.port, lastTargetId);
     } else {
       const reusedChrome = manualLogin ? await maybeReuseRunningChrome(userDataDir, logger) : null;
       chrome =
-        reusedChrome ??
-        (await launchChrome({ ...config, url: targetUrl }, userDataDir, logger));
+        reusedChrome ?? (await launchChrome({ ...config, url: targetUrl }, userDataDir, logger));
 
-      const host = (chrome as unknown as { host?: string }).host ?? '127.0.0.1';
+      const host = (chrome as unknown as { host?: string }).host ?? "127.0.0.1";
       if (config.hideWindow) {
         await hideChromeWindow(chrome, logger);
       }
@@ -906,11 +954,17 @@ export async function runGeminiDeepResearchBrowser(
           await writeChromePid(userDataDir, chrome.pid);
         }
       }
-      removeTerminationHooks = registerTerminationHooks(chrome, userDataDir, effectiveKeepBrowser, logger, {
-        isInFlight: () => runStatus !== 'complete',
-        emitRuntimeHint: async () => emitRuntimeHint(host, chrome?.port, lastTargetId),
-        preserveUserDataDir: manualLogin,
-      });
+      removeTerminationHooks = registerTerminationHooks(
+        chrome,
+        userDataDir,
+        effectiveKeepBrowser,
+        logger,
+        {
+          isInFlight: () => runStatus !== "complete",
+          emitRuntimeHint: async () => emitRuntimeHint(host, chrome?.port, lastTargetId),
+          preserveUserDataDir: manualLogin,
+        },
+      );
 
       const connection = await connectWithNewTab(chrome.port, logger, undefined, host);
       client = connection.client;
@@ -918,12 +972,12 @@ export async function runGeminiDeepResearchBrowser(
     }
 
     if (!client) {
-      throw new Error('Failed to connect to Chrome for Gemini Deep Research session.');
+      throw new Error("Failed to connect to Chrome for Gemini Deep Research session.");
     }
 
     const { Network, Page, Runtime, Input, DOM } = client;
     const enablers = [Network.enable({}), Page.enable(), Runtime.enable()];
-    if (DOM && typeof DOM.enable === 'function') {
+    if (DOM && typeof DOM.enable === "function") {
       enablers.push(DOM.enable());
     }
     await Promise.all(enablers);
@@ -942,19 +996,29 @@ export async function runGeminiDeepResearchBrowser(
           inlineCookies: config.inlineCookies ?? undefined,
           cookiePath: config.chromeCookiePath ?? undefined,
           waitMs: config.cookieSyncWaitMs ?? 0,
-          origins: ['https://gemini.google.com', 'https://accounts.google.com', 'https://www.google.com'],
+          origins: [
+            "https://gemini.google.com",
+            "https://accounts.google.com",
+            "https://www.google.com",
+          ],
         });
         if (config.inlineCookies && applied === 0) {
-          throw new Error('No inline cookies were applied; aborting before navigation.');
+          throw new Error("No inline cookies were applied; aborting before navigation.");
         }
-        logger(applied > 0 ? `Applied ${applied} cookies` : 'No cookies applied; continuing without session reuse');
+        logger(
+          applied > 0
+            ? `Applied ${applied} cookies`
+            : "No cookies applied; continuing without session reuse",
+        );
       } else if (manualLogin) {
-        logger('Skipping cookie sync (--browser-manual-login enabled); reuse the opened profile after signing in.');
+        logger(
+          "Skipping cookie sync (--browser-manual-login enabled); reuse the opened profile after signing in.",
+        );
       } else {
-        logger('Skipping cookie sync (--browser-no-cookie-sync)');
+        logger("Skipping cookie sync (--browser-no-cookie-sync)");
       }
     } else {
-      logger('Skipping cookie sync for remote Chrome (using existing session)');
+      logger("Skipping cookie sync for remote Chrome (using existing session)");
     }
 
     await navigateToGemini(Page, Runtime, targetUrl, logger);
@@ -963,8 +1027,11 @@ export async function runGeminiDeepResearchBrowser(
     await ensureGeminiDeepResearchEnabled(Runtime, logger);
 
     const readLocation = async () => {
-      const value = await Runtime.evaluate({ expression: 'location.href', returnByValue: true }).catch(() => null);
-      const href = typeof value?.result?.value === 'string' ? value.result.value : undefined;
+      const value = await Runtime.evaluate({
+        expression: "location.href",
+        returnByValue: true,
+      }).catch(() => null);
+      const href = typeof value?.result?.value === "string" ? value.result.value : undefined;
       if (href) lastUrl = href;
     };
     await readLocation();
@@ -976,9 +1043,12 @@ export async function runGeminiDeepResearchBrowser(
     await readLocation();
 
     const researchTimeoutMs = Math.max(config.timeoutMs ?? 1_800_000, 300_000);
-    const answer = await waitForGeminiResearchReport(Runtime, Math.min(researchTimeoutMs, 3_600_000));
+    const answer = await waitForGeminiResearchReport(
+      Runtime,
+      Math.min(researchTimeoutMs, 3_600_000),
+    );
 
-    runStatus = 'complete';
+    runStatus = "complete";
     const answerText = answer.report.text.trim();
     const answerTokens = estimateTokenCount(answerText);
     const answerMarkdown = composeGeminiReportMarkdown(
@@ -1014,9 +1084,9 @@ export async function runGeminiDeepResearchBrowser(
     if (connectionClosedUnexpectedly) {
       await emitRuntimeHint(chromeHost, remoteChromeConfig?.port ?? chrome?.port, lastTargetId);
       throw new BrowserAutomationError(
-        'Chrome window closed before oracle finished. Please keep it open until completion.',
+        "Chrome window closed before oracle finished. Please keep it open until completion.",
         {
-          stage: 'connection-lost',
+          stage: "connection-lost",
           runtime: {
             chromePid: chrome?.pid,
             chromePort: remoteChromeConfig?.port ?? chrome?.port,
@@ -1043,9 +1113,12 @@ export async function runGeminiDeepResearchBrowser(
     if (!remoteChromeConfig && chrome?.port && lastTargetId && !effectiveKeepBrowser) {
       await closeTab(chrome.port, lastTargetId, logger, chromeHost).catch(() => undefined);
     } else if (remoteChromeConfig && lastTargetId) {
-      await closeRemoteChromeTarget(remoteChromeConfig.host, remoteChromeConfig.port, lastTargetId, logger).catch(
-        () => undefined,
-      );
+      await closeRemoteChromeTarget(
+        remoteChromeConfig.host,
+        remoteChromeConfig.port,
+        lastTargetId,
+        logger,
+      ).catch(() => undefined);
     }
 
     removeDialogHandler?.();
@@ -1060,12 +1133,18 @@ export async function runGeminiDeepResearchBrowser(
         }
       }
       if (manualLogin) {
-        const shouldCleanup = await shouldCleanupManualLoginProfileState(userDataDir, logger.verbose ? logger : undefined, {
-          connectionClosedUnexpectedly,
-          host: chromeHost,
-        });
+        const shouldCleanup = await shouldCleanupManualLoginProfileState(
+          userDataDir,
+          logger.verbose ? logger : undefined,
+          {
+            connectionClosedUnexpectedly,
+            host: chromeHost,
+          },
+        );
         if (shouldCleanup) {
-          await cleanupStaleProfileState(userDataDir, logger, { lockRemovalMode: 'never' }).catch(() => undefined);
+          await cleanupStaleProfileState(userDataDir, logger, { lockRemovalMode: "never" }).catch(
+            () => undefined,
+          );
         }
       } else {
         await rm(userDataDir, { recursive: true, force: true }).catch(() => undefined);

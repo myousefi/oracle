@@ -13,6 +13,7 @@
 ### Task 1: Lock the new model mapping in tests
 
 **Files:**
+
 - Modify: `tests/runOptions.test.ts`
 - Modify: `tests/cli/options.test.ts`
 - Modify: `tests/cli/browserConfig.test.ts`
@@ -28,6 +29,7 @@ Require omitted `--model` cases to resolve to `gpt-5.4-pro`.
 **Step 2: Update alias-resolution expectations**
 
 Require legacy GPT aliases to resolve as follows:
+
 - `gpt-5.1-pro`, `gpt-5.2-pro`, `gpt-5-pro`, and generic Pro labels -> `gpt-5.4-pro`
 - `gpt-5.1`, `gpt-5.2`, and ambiguous non-pro GPT labels -> `gpt-5.4`
 - `gpt-5.2-thinking` -> `gpt-5.4-thinking`
@@ -41,6 +43,7 @@ Expected: FAIL against the current 5.2-era implementation.
 ### Task 2: Implement the source migration
 
 **Files:**
+
 - Modify: `src/oracle/types.ts`
 - Modify: `src/oracle/config.ts`
 - Modify: `src/cli/options.ts`
@@ -71,6 +74,7 @@ Refresh help text, timeout notes, alias notes, and error guidance so they no lon
 ### Task 3: Refresh supporting docs and skills
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `skills/oracle/SKILL.md`
 - Modify: `docs/browser-mode.md`
@@ -96,6 +100,7 @@ Keep legacy references only when documenting alias compatibility or historical b
 ### Task 4: Verify GREEN and rebuild the live CLI
 
 **Files:**
+
 - Modify: `dist/**` via build output
 
 **Step 1: Run the focused tests again**

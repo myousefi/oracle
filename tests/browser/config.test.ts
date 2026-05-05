@@ -1,7 +1,7 @@
-import { describe, expect, test } from 'vitest';
-import { resolveBrowserConfig } from '../../src/browser/config.js';
-import { CHATGPT_URL } from '../../src/browser/constants.js';
-import { DEFAULT_ORACLE_BROWSER_PROFILE_DIR } from '../../src/browser/profileDefaults.js';
+import { describe, expect, test } from "vitest";
+import { resolveBrowserConfig } from "../../src/browser/config.js";
+import { CHATGPT_URL } from "../../src/browser/constants.js";
+import { DEFAULT_ORACLE_BROWSER_PROFILE_DIR } from "../../src/browser/profileDefaults.js";
 
 describe("resolveBrowserConfig", () => {
   test("returns defaults when config missing", () => {
@@ -42,8 +42,8 @@ describe("resolveBrowserConfig", () => {
   test("rejects temporary chat URLs when desiredModel is Pro", () => {
     expect(() =>
       resolveBrowserConfig({
-        url: 'https://chatgpt.com/?temporary-chat=true',
-        desiredModel: 'GPT-5.4 Pro',
+        url: "https://chatgpt.com/?temporary-chat=true",
+        desiredModel: "GPT-5.4 Pro",
       }),
     ).toThrow(/Temporary Chat/i);
   });

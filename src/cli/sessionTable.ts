@@ -35,7 +35,7 @@ export function formatSessionTableRow(
   const status = colorStatus(meta.status ?? "unknown", rich);
   const modelLabel = (meta.model ?? "n/a").padEnd(MODEL_PAD);
   const model = rich ? chalk.white(modelLabel) : modelLabel;
-  const modeLabel = (meta.mode ?? meta.options?.mode ?? 'browser').padEnd(MODE_PAD);
+  const modeLabel = (meta.mode ?? meta.options?.mode ?? "browser").padEnd(MODE_PAD);
   const mode = rich ? chalk.gray(modeLabel) : modeLabel;
   const timestampLabel = formatTimestampAligned(meta.createdAt).padEnd(TIMESTAMP_PAD);
   const timestamp = rich ? chalk.gray(timestampLabel) : timestampLabel;
@@ -52,8 +52,8 @@ export function formatSessionTableRow(
 }
 
 export function resolveSessionCost(meta: SessionMetadata): number | null {
-  const mode = meta.mode ?? meta.options?.mode ?? 'browser';
-  if (mode === 'browser') {
+  const mode = meta.mode ?? meta.options?.mode ?? "browser";
+  if (mode === "browser") {
     return null;
   }
   if (meta.usage?.cost != null) {

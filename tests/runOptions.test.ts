@@ -6,7 +6,7 @@ import { DEFAULT_MODEL, MODEL_CONFIGS } from "../src/oracle/config.js";
 describe("resolveRunOptionsFromConfig", () => {
   const basePrompt = "This prompt is comfortably above twenty characters.";
 
-  it('routes to browser mode by default', () => {
+  it("routes to browser mode by default", () => {
     const { resolvedEngine } = resolveRunOptionsFromConfig({
       prompt: basePrompt,
       env: {},
@@ -14,72 +14,72 @@ describe("resolveRunOptionsFromConfig", () => {
     expect(resolvedEngine).toBe("browser");
   });
 
-  it('rejects explicit --engine api', () => {
+  it("rejects explicit --engine api", () => {
     expect(() =>
       resolveRunOptionsFromConfig({
         prompt: basePrompt,
-        engine: 'api',
+        engine: "api",
       }),
-    ).toThrow('API engine is disabled');
+    ).toThrow("API engine is disabled");
   });
 
-  it('uses config model when caller does not provide one', () => {
+  it("uses config model when caller does not provide one", () => {
     const { runOptions } = resolveRunOptionsFromConfig({
       prompt: basePrompt,
-      userConfig: { model: 'gpt-5.1' },
+      userConfig: { model: "gpt-5.1" },
     });
-    expect(runOptions.model).toBe('gpt-5.4');
+    expect(runOptions.model).toBe("gpt-5.5");
   });
 
-  it('defaults to gpt-5.4-pro when model not provided', () => {
+  it("defaults to gpt-5.5-pro when model not provided", () => {
     const { runOptions } = resolveRunOptionsFromConfig({
       prompt: basePrompt,
     });
     expect(runOptions.model).toBe(DEFAULT_MODEL);
   });
 
-  it('maps browser aliases for GPT Pro and legacy models', () => {
+  it("maps browser aliases for GPT Pro and legacy models", () => {
     const { runOptions } = resolveRunOptionsFromConfig({
       prompt: basePrompt,
-      model: 'gpt-5.1-pro',
+      model: "gpt-5.1-pro",
     });
-    expect(runOptions.model).toBe('gpt-5.4-pro');
+    expect(runOptions.model).toBe("gpt-5.5-pro");
   });
 
-  it('rejects multi-model lists', () => {
+  it("rejects multi-model lists", () => {
     expect(() =>
       resolveRunOptionsFromConfig({
         prompt: basePrompt,
-        models: ['gpt-5.1', 'gemini-3-pro'],
+        models: ["gpt-5.1", "gemini-3.1-pro"],
       }),
-    ).toThrow('Multi-model execution is not supported in browser-only mode.');
+    ).toThrow("Multi-model execution is not supported in browser-only mode.");
   });
 
-  it('maps grok model through browser inference', () => {
+  it("maps grok model through browser inference", () => {
     const { runOptions } = resolveRunOptionsFromConfig({
       prompt: basePrompt,
-      model: 'grok',
+      model: "grok",
     });
-    expect(runOptions.model).toBe('grok-4.20');
+    expect(runOptions.model).toBe("grok-4.3");
   });
 
-  it('rejects non-browser model labels', () => {
+  it("rejects non-browser model labels", () => {
     expect(() =>
       resolveRunOptionsFromConfig({
         prompt: basePrompt,
-        model: 'claude-4.5-sonnet',
+        model: "claude-4.5-sonnet",
       }),
-    ).toThrow('Browser-only mode supports GPT, Gemini, and Grok models only.');
+    ).toThrow("Browser-only mode supports GPT, Gemini, and Grok models only.");
   });
 
-  it('keeps browser base URL selection for grok when configured', () => {
-    const env = { XAI_BASE_URL: 'https://api.example/v1' } as NodeJS.ProcessEnv;
+  it("keeps browser base URL selection for grok when configured", () => {
+    const env = { XAI_BASE_URL: "https://api.example/v1" } as NodeJS.ProcessEnv;
     const { runOptions } = resolveRunOptionsFromConfig({
       prompt: basePrompt,
       model: "grok",
       env,
     });
-    expect(runOptions.baseUrl).toBe('https://api.example/v1');
+    expect(runOptions.baseUrl).toBe("https://api.example/v1");
   });
 });
 
@@ -101,7 +101,11 @@ describe("estimateRequestTokens", () => {
       background: true,
       store: true,
     };
-    const estimate = estimateRequestTokens(request as unknown as Parameters<typeof estimateRequestTokens>[0], modelConfig, 10);
+    const estimate = estimateRequestTokens(
+      request as unknown as Parameters<typeof estimateRequestTokens>[0],
+      modelConfig,
+      10,
+    );
     expect(estimate).toBeGreaterThan(10);
   });
 

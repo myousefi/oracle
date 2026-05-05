@@ -99,7 +99,7 @@ export async function submitPrompt(
   });
   if (!inserted?.result?.value) {
     // Fallback: \r is treated as soft line break rather than Enter/submit in ProseMirror
-    await input.insertText({ text: prompt.replace(/\n/g, '\r') });
+    await input.insertText({ text: prompt.replace(/\n/g, "\r") });
   }
 
   // Some pages (notably ChatGPT when subscriptions/widgets load) need a brief settle
@@ -359,13 +359,63 @@ export function buildAttachmentReadyExpressionForTest(attachmentNames: string[])
 }
 
 async function ensureChatGptSearchEnabled(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   logger?: BrowserLogger,
   timeoutMs = 8_000,
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs;
-  const script = `(() => {
+  let openedMenuCount = 0;
+  const script = buildEnableChatGptSearchExpression();
+  while (Date.now() < deadline) {
+    const { result } = await Runtime.evaluate({ expression: script, returnByValue: true });
+    const status = (result?.value as { status?: string } | undefined)?.status;
+    if (status === "selected") {
+      logger?.("ChatGPT web search enabled");
+      return;
+    }
+    if (status === "default-search-not-exposed") {
+      logger?.("ChatGPT web search appears to be inherited by default; no composer toggle exposed");
+      return;
+    }
+    if (status === "clicked-search") {
+      logger?.("Enabled ChatGPT web search");
+      return;
+    }
+    if (status === "button-missing") {
+      if (logger) {
+        await logDomFailure(Runtime, logger, "enable-web-search");
+      }
+      logger?.(
+        "ChatGPT search controls are not exposed in this composer; proceeding with project defaults",
+      );
+      return;
+    }
+    if (status === "opened-menu") {
+      openedMenuCount += 1;
+      if (openedMenuCount >= 2) {
+        logger?.(
+          "ChatGPT search toggle did not appear after opening the menu; proceeding with project defaults",
+        );
+        return;
+      }
+    } else {
+      openedMenuCount = 0;
+    }
+    await delay(150);
+  }
+
+  if (logger) {
+    await logDomFailure(Runtime, logger, "enable-web-search-timeout");
+  }
+  logger?.(
+    "Timed out confirming ChatGPT web search in the composer; proceeding with project defaults",
+  );
+}
+
+function buildEnableChatGptSearchExpression(): string {
+  return `(() => {
     ${buildClickDispatcher()}
+    const INPUT_SELECTORS = ${JSON.stringify(INPUT_SELECTORS)};
     const normalize = (value) => String(value || '').toLowerCase().replace(/\\s+/g, ' ').trim();
     const isVisible = (node) => {
       if (!node || typeof node.getBoundingClientRect !== 'function') return false;
@@ -378,37 +428,75 @@ async function ensureChatGptSearchEnabled(
     };
     const labelOf = (node) =>
       normalize(node?.textContent || node?.getAttribute?.('aria-label') || node?.getAttribute?.('title') || '');
-
-    const selectedChip = Array.from(document.querySelectorAll('button,[role="button"]')).find((node) => {
+    const rootSelector = 'form,[data-testid*="composer"],[data-testid*="prompt"]';
+    const sidebarSelector = 'nav, aside, [data-testid*="sidebar"], [data-testid^="history-item"]';
+    const rootCandidates = Array.from(document.querySelectorAll(rootSelector)).filter(isVisible);
+    const inputRoot = INPUT_SELECTORS
+      .map((selector) => document.querySelector(selector))
+      .find((node) => isVisible(node))
+      ?.closest?.(rootSelector);
+    const addButtonCandidates = Array.from(document.querySelectorAll('button,[role="button"]')).filter((node) => {
       if (!isVisible(node)) return false;
       const label = labelOf(node);
-      return (label.includes('search') || label.includes('web search')) && label.includes('click to remove');
+      return label.includes('add files and more');
+    });
+    const addButtonRoot = addButtonCandidates
+      .map((node) => node.closest?.(rootSelector))
+      .find((node) => node && isVisible(node));
+    const composerRoot = addButtonRoot || inputRoot || rootCandidates[0] || null;
+    const inComposer = (node) => {
+      if (!node) return false;
+      if (node.closest?.(sidebarSelector)) return false;
+      if (!composerRoot) return false;
+      return composerRoot.contains(node);
+    };
+    const isComposerSearchLabel = (label) => {
+      return label === 'search' || label.includes('web search') || label.startsWith('search ');
+    };
+    const isSelectedNode = (node, label) => {
+      const dataState = normalize(node?.getAttribute?.('data-state'));
+      return (
+        label.includes('click to remove') ||
+        node?.getAttribute?.('aria-pressed') === 'true' ||
+        node?.getAttribute?.('aria-checked') === 'true' ||
+        dataState === 'checked' ||
+        dataState === 'on' ||
+        dataState === 'active'
+      );
+    };
+
+    const selectedChip = Array.from(
+      (composerRoot || document).querySelectorAll('button,[role="button"],[role="menuitemcheckbox"],[role="menuitemradio"]'),
+    ).find((node) => {
+      if (!isVisible(node) || !inComposer(node)) return false;
+      const label = labelOf(node);
+      return isComposerSearchLabel(label) && isSelectedNode(node, label);
     });
     if (selectedChip) {
       return { status: 'selected' };
     }
 
-    const addButton = Array.from(document.querySelectorAll('button,[role="button"]')).find((node) => {
-      if (!isVisible(node)) return false;
-      const label = labelOf(node);
-      return label.includes('add files and more');
-    });
+    const addButton = addButtonCandidates.find((node) => !composerRoot || inComposer(node)) || addButtonCandidates[0];
     if (!(addButton instanceof HTMLElement)) {
       return { status: 'button-missing' };
     }
 
-    const menuItem = Array.from(document.querySelectorAll('[role="menuitemradio"],[role="menuitemcheckbox"],[role="menuitem"],button'))
+    const menuRoots = Array.from(
+      document.querySelectorAll('[role="menu"], [data-radix-collection-root], [data-state="open"]'),
+    ).filter((node) => isVisible(node) && !node.closest?.(sidebarSelector));
+
+    const menuItem = menuRoots
+      .flatMap((root) =>
+        Array.from(root.querySelectorAll('[role="menuitemradio"],[role="menuitemcheckbox"],[role="menuitem"],button')),
+      )
       .find((node) => {
         if (!isVisible(node)) return false;
         const label = labelOf(node);
-        return label === 'web search' || label === 'search';
+        return isComposerSearchLabel(label);
       });
 
     if (menuItem instanceof HTMLElement) {
-      const checked =
-        menuItem.getAttribute('aria-checked') === 'true' ||
-        menuItem.getAttribute('aria-pressed') === 'true' ||
-        menuItem.getAttribute('data-state') === 'checked';
+      const checked = isSelectedNode(menuItem, labelOf(menuItem));
       if (!checked) {
         dispatchClickSequence(menuItem);
         return { status: 'clicked-search' };
@@ -416,37 +504,16 @@ async function ensureChatGptSearchEnabled(
       return { status: 'selected' };
     }
 
+    const addButtonExpanded =
+      addButton.getAttribute('aria-expanded') === 'true' ||
+      addButton.getAttribute('data-state') === 'open';
+    if (addButtonExpanded) {
+      return { status: 'default-search-not-exposed' };
+    }
+
     dispatchClickSequence(addButton);
     return { status: 'opened-menu' };
   })()`;
-
-  while (Date.now() < deadline) {
-    const { result } = await Runtime.evaluate({ expression: script, returnByValue: true });
-    const status = (result?.value as { status?: string } | undefined)?.status;
-    if (status === 'selected') {
-      logger?.('ChatGPT web search enabled');
-      return;
-    }
-    if (status === 'clicked-search') {
-      logger?.('Enabled ChatGPT web search');
-    }
-    if (status === 'button-missing') {
-      if (logger) {
-        await logDomFailure(Runtime, logger, 'enable-web-search');
-      }
-      throw new BrowserAutomationError('Failed to locate the ChatGPT "Add files and more" button while enabling Search.', {
-        stage: 'enable-web-search',
-      });
-    }
-    await delay(150);
-  }
-
-  if (logger) {
-    await logDomFailure(Runtime, logger, 'enable-web-search-timeout');
-  }
-  throw new BrowserAutomationError('Timed out enabling ChatGPT web search before submit.', {
-    stage: 'enable-web-search',
-  });
 }
 
 async function attemptSendButton(
@@ -671,6 +738,7 @@ async function verifyPromptCommitted(
 
 // biome-ignore lint/style/useNamingConvention: test-only export used in vitest suite
 export const __test__ = {
+  buildEnableChatGptSearchExpression,
   ensureChatGptSearchEnabled,
   verifyPromptCommitted,
 };

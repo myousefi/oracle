@@ -8,13 +8,13 @@ delete envWithoutKey.OPENAI_API_KEY;
 delete envWithKey.ORACLE_ENGINE;
 delete envWithoutKey.ORACLE_ENGINE;
 
-describe('resolveEngine', () => {
-  it('uses browser when no flags are provided', () => {
+describe("resolveEngine", () => {
+  it("uses browser when no flags are provided", () => {
     const engine = resolveEngine({ engine: undefined, browserFlag: false, env: envWithKey });
-    expect(engine).toBe<EngineMode>('browser');
+    expect(engine).toBe<EngineMode>("browser");
   });
 
-  it('uses browser when no flags are provided without OPENAI_API_KEY', () => {
+  it("uses browser when no flags are provided without OPENAI_API_KEY", () => {
     const engine = resolveEngine({ engine: undefined, browserFlag: false, env: envWithoutKey });
     expect(engine).toBe<EngineMode>("browser");
   });
@@ -32,12 +32,12 @@ describe('resolveEngine', () => {
     // biome-ignore lint/complexity/useLiteralKeys: env var names are uppercase with underscores
     env["ORACLE_ENGINE"] = "api";
     const engine = resolveEngine({ engine: undefined, browserFlag: false, env });
-    expect(engine).toBe<EngineMode>('browser');
+    expect(engine).toBe<EngineMode>("browser");
   });
 
-  it('respects explicit --engine api even without OPENAI_API_KEY', () => {
-    const engine = resolveEngine({ engine: 'api', browserFlag: false, env: envWithoutKey });
-    expect(engine).toBe<EngineMode>('browser');
+  it("respects explicit --engine api even without OPENAI_API_KEY", () => {
+    const engine = resolveEngine({ engine: "api", browserFlag: false, env: envWithoutKey });
+    expect(engine).toBe<EngineMode>("browser");
   });
 
   it("lets legacy --browser override everything", () => {
@@ -46,9 +46,9 @@ describe('resolveEngine', () => {
   });
 });
 
-describe('defaultWaitPreference', () => {
-  it('keeps wait enabled for browser and legacy models', () => {
-    expect(defaultWaitPreference('gpt-5.1-codex', 'api')).toBe(true);
-    expect(defaultWaitPreference('gpt-5.2-pro', 'browser')).toBe(true);
+describe("defaultWaitPreference", () => {
+  it("keeps wait enabled for browser and legacy models", () => {
+    expect(defaultWaitPreference("gpt-5.1-codex", "api")).toBe(true);
+    expect(defaultWaitPreference("gpt-5.2-pro", "browser")).toBe(true);
   });
 });

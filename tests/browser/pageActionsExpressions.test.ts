@@ -1,13 +1,16 @@
-import { describe, expect, test } from 'vitest';
-import { JSDOM } from 'jsdom';
+import { describe, expect, test } from "vitest";
+import { JSDOM } from "jsdom";
 import {
   buildAssistantExtractorForTest,
   buildConversationDebugExpressionForTest,
   buildMarkdownFallbackExtractorForTest,
   buildCopyExpressionForTest,
-} from '../../src/browser/pageActions.ts';
-import { __test__ as reattachHelpersTest } from '../../src/browser/reattachHelpers.ts';
-import { CONVERSATION_TURN_SELECTOR, ASSISTANT_ROLE_SELECTOR } from '../../src/browser/constants.ts';
+} from "../../src/browser/pageActions.ts";
+import { __test__ as reattachHelpersTest } from "../../src/browser/reattachHelpers.ts";
+import {
+  CONVERSATION_TURN_SELECTOR,
+  ASSISTANT_ROLE_SELECTOR,
+} from "../../src/browser/constants.ts";
 
 describe("browser automation expressions", () => {
   test("assistant extractor references constants", () => {
@@ -45,14 +48,14 @@ describe("browser automation expressions", () => {
     expect(expression).toContain("copy-turn-action-button");
   });
 
-  test('copy expression scopes messageId lookups to the enclosing conversation turn', () => {
-    const expression = buildCopyExpressionForTest({ messageId: 'assistant-original' });
+  test("copy expression scopes messageId lookups to the enclosing conversation turn", () => {
+    const expression = buildCopyExpressionForTest({ messageId: "assistant-original" });
     expect(expression).toContain('[data-message-id="');
-    expect(expression).toContain('closest?.(');
+    expect(expression).toContain("closest?.(");
     expect(expression).toContain(JSON.stringify(CONVERSATION_TURN_SELECTOR));
   });
 
-  test('assistant extractor prefers the final answer block over earlier thinking summaries in project view', () => {
+  test("assistant extractor prefers the final answer block over earlier thinking summaries in project view", () => {
     const dom = new JSDOM(
       `
         <body>
@@ -68,27 +71,29 @@ describe("browser automation expressions", () => {
           </article>
         </body>
       `,
-      { runScripts: 'dangerously' },
+      { runScripts: "dangerously" },
     );
-    Object.defineProperty(dom.window.HTMLElement.prototype, 'innerText', {
+    Object.defineProperty(dom.window.HTMLElement.prototype, "innerText", {
       configurable: true,
       get() {
-        return this.textContent ?? '';
+        return this.textContent ?? "";
       },
       set(value: string) {
         this.textContent = value;
       },
     });
 
-    const expression = buildAssistantExtractorForTest('capture');
-    const result = dom.window.eval(`(() => { ${expression}; return capture(); })()`) as { text?: string } | null;
+    const expression = buildAssistantExtractorForTest("capture");
+    const result = dom.window.eval(`(() => { ${expression}; return capture(); })()`) as {
+      text?: string;
+    } | null;
 
-    expect(result?.text).toContain('Chapter 16: The Anatomy of Diffusion and Multimodal Serving');
-    expect(result?.text).toContain('This is the full answer body');
-    expect(result?.text).not.toBe('I’m treating this as a full mechanism-level reconstruction.');
+    expect(result?.text).toContain("Chapter 16: The Anatomy of Diffusion and Multimodal Serving");
+    expect(result?.text).toContain("This is the full answer body");
+    expect(result?.text).not.toBe("I’m treating this as a full mechanism-level reconstruction.");
   });
 
-  test('conversation recovery expression returns the assistant turn immediately after the matched prompt', () => {
+  test("conversation recovery expression returns the assistant turn immediately after the matched prompt", () => {
     const dom = new JSDOM(
       `
         <body>
@@ -123,12 +128,12 @@ describe("browser automation expressions", () => {
           </main>
         </body>
       `,
-      { runScripts: 'dangerously' },
+      { runScripts: "dangerously" },
     );
-    Object.defineProperty(dom.window.HTMLElement.prototype, 'innerText', {
+    Object.defineProperty(dom.window.HTMLElement.prototype, "innerText", {
       configurable: true,
       get() {
-        return this.textContent ?? '';
+        return this.textContent ?? "";
       },
       set(value: string) {
         this.textContent = value;
@@ -137,18 +142,22 @@ describe("browser automation expressions", () => {
 
     const expression = reattachHelpersTest.buildConversationRecoveryExpression({
       promptNeedles: [
-        'now write chapter 1: what serverless gpu inference must ultimately reduce to additional chapter-specific requirements: open from the naive belief that the platform is basically an api endpoint.',
+        "now write chapter 1: what serverless gpu inference must ultimately reduce to additional chapter-specific requirements: open from the naive belief that the platform is basically an api endpoint.",
       ],
     });
-    const result = dom.window.eval(expression) as { text?: string; messageId?: string; turnId?: string } | null;
+    const result = dom.window.eval(expression) as {
+      text?: string;
+      messageId?: string;
+      turnId?: string;
+    } | null;
 
-    expect(result?.messageId).toBe('assistant-original');
-    expect(result?.turnId).toBe('assistant-original-turn');
-    expect(result?.text).toContain('Chapter 1 begins from the apparent simplicity of an API call');
-    expect(result?.text).not.toContain('latest follow-up reply');
+    expect(result?.messageId).toBe("assistant-original");
+    expect(result?.turnId).toBe("assistant-original-turn");
+    expect(result?.text).toContain("Chapter 1 begins from the apparent simplicity of an API call");
+    expect(result?.text).not.toContain("latest follow-up reply");
   });
 
-  test('conversation recovery expression recognizes article turns labeled by You said and ChatGPT said', () => {
+  test("conversation recovery expression recognizes article turns labeled by You said and ChatGPT said", () => {
     const dom = new JSDOM(
       `
         <body>
@@ -187,12 +196,12 @@ describe("browser automation expressions", () => {
           </main>
         </body>
       `,
-      { runScripts: 'dangerously' },
+      { runScripts: "dangerously" },
     );
-    Object.defineProperty(dom.window.HTMLElement.prototype, 'innerText', {
+    Object.defineProperty(dom.window.HTMLElement.prototype, "innerText", {
       configurable: true,
       get() {
-        return this.textContent ?? '';
+        return this.textContent ?? "";
       },
       set(value: string) {
         this.textContent = value;
@@ -201,16 +210,16 @@ describe("browser automation expressions", () => {
 
     const expression = reattachHelpersTest.buildConversationRecoveryExpression({
       promptNeedles: [
-        'now write chapter 16 the anatomy of diffusion and multimodal serving additional chapter specific requirements open from the belief that all inference serving problems differ only by model size',
+        "now write chapter 16 the anatomy of diffusion and multimodal serving additional chapter specific requirements open from the belief that all inference serving problems differ only by model size",
       ],
     });
     const result = dom.window.eval(expression) as { text?: string; messageId?: string } | null;
 
-    expect(result?.text).toContain('Chapter 16 is not just a larger version of LLM serving');
-    expect(result?.text).not.toContain('later follow-up');
+    expect(result?.text).toContain("Chapter 16 is not just a larger version of LLM serving");
+    expect(result?.text).not.toContain("later follow-up");
   });
 
-  test('conversation recovery prefers the original chapter prompt over a later follow-up that repeats weaker prompt fragments', () => {
+  test("conversation recovery prefers the original chapter prompt over a later follow-up that repeats weaker prompt fragments", () => {
     const dom = new JSDOM(
       `
         <body>
@@ -253,12 +262,12 @@ describe("browser automation expressions", () => {
           </main>
         </body>
       `,
-      { runScripts: 'dangerously' },
+      { runScripts: "dangerously" },
     );
-    Object.defineProperty(dom.window.HTMLElement.prototype, 'innerText', {
+    Object.defineProperty(dom.window.HTMLElement.prototype, "innerText", {
       configurable: true,
       get() {
-        return this.textContent ?? '';
+        return this.textContent ?? "";
       },
       set(value: string) {
         this.textContent = value;
@@ -267,16 +276,20 @@ describe("browser automation expressions", () => {
 
     const expression = reattachHelpersTest.buildConversationRecoveryExpression({
       promptNeedles: [
-        'from linux to serverless gpu inference',
-        'now write chapter 16 the anatomy of diffusion and multimodal serving',
-        'open from the belief that all inference serving problems differ only by model size',
+        "from linux to serverless gpu inference",
+        "now write chapter 16 the anatomy of diffusion and multimodal serving",
+        "open from the belief that all inference serving problems differ only by model size",
       ],
     });
-    const result = dom.window.eval(expression) as { text?: string; messageId?: string; turnId?: string } | null;
+    const result = dom.window.eval(expression) as {
+      text?: string;
+      messageId?: string;
+      turnId?: string;
+    } | null;
 
-    expect(result?.messageId).toBe('assistant-original');
-    expect(result?.turnId).toBe('conversation-turn-2');
-    expect(result?.text).toContain('This is the original chapter draft');
-    expect(result?.text).not.toContain('later follow-up response');
+    expect(result?.messageId).toBe("assistant-original");
+    expect(result?.turnId).toBe("conversation-turn-2");
+    expect(result?.text).toContain("This is the original chapter draft");
+    expect(result?.text).not.toContain("later follow-up response");
   });
 });
