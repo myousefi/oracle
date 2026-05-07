@@ -194,6 +194,61 @@ describe("runBrowserSessionExecution", () => {
     );
   });
 
+  test("passes ChatGPT image generation settings to the browser runner", async () => {
+    const log = vi.fn();
+    const executeBrowser = vi.fn(async () => ({
+      answerText: "Generated 2 images.",
+      answerMarkdown: "Generated 2 images.",
+      imageOutputPaths: ["/repo/images/image-1.png", "/repo/images/image-2.png"],
+      response: {
+        imageOutputPaths: ["/repo/images/image-1.png", "/repo/images/image-2.png"],
+      },
+      tookMs: 1,
+      answerTokens: 4,
+      answerChars: 19,
+    }));
+    const result = await runBrowserSessionExecution(
+      {
+        runOptions: {
+          ...baseRunOptions,
+          generateImages: true,
+          outputPath: "images",
+          aspectRatio: "4:3",
+        },
+        browserConfig: baseConfig,
+        cwd: "/repo",
+        log,
+      },
+      {
+        assemblePrompt: async () => ({
+          markdown: "prompt",
+          composerText: "prompt",
+          estimatedInputTokens: 5,
+          attachments: [],
+          inlineFileCount: 0,
+          tokenEstimateIncludesInlineFiles: false,
+          attachmentsPolicy: "auto",
+          attachmentMode: "inline",
+          fallback: null,
+        }),
+        executeBrowser,
+      },
+    );
+
+    expect(executeBrowser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        imageGeneration: {
+          outputPath: "/repo/images",
+          aspectRatio: "4:3",
+        },
+      }),
+    );
+    expect(result.response?.imageOutputPaths).toEqual([
+      "/repo/images/image-1.png",
+      "/repo/images/image-2.png",
+    ]);
+  });
+
   test("respects verbose logging", async () => {
     const log = vi.fn();
     await runBrowserSessionExecution(

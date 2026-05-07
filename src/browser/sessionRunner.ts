@@ -1,14 +1,19 @@
-import chalk from 'chalk';
-import type { RunOracleOptions } from '../oracle.js';
-import { formatTokenCount } from '../oracle/runUtils.js';
-import { formatFinishLine } from '../oracle/finishLine.js';
-import type { BrowserSessionConfig, BrowserRuntimeMetadata } from '../sessionStore.js';
-import { runBrowserMode } from '../browserMode.js';
-import type { BrowserRunResult } from '../browserMode.js';
-import { assembleBrowserPrompt } from './prompt.js';
-import { BrowserAutomationError } from '../oracle/errors.js';
-import type { BrowserLogger } from './types.js';
-import { extractConversationIdFromUrl } from './reattachHelpers.js';
+import chalk from "chalk";
+import path from "node:path";
+import type { RunOracleOptions } from "../oracle.js";
+import { formatTokenCount } from "../oracle/runUtils.js";
+import { formatFinishLine } from "../oracle/finishLine.js";
+import {
+  sessionStore,
+  type BrowserSessionConfig,
+  type BrowserRuntimeMetadata,
+} from "../sessionStore.js";
+import { runBrowserMode } from "../browserMode.js";
+import type { BrowserRunOptions, BrowserRunResult } from "../browserMode.js";
+import { assembleBrowserPrompt } from "./prompt.js";
+import { BrowserAutomationError } from "../oracle/errors.js";
+import type { BrowserLogger } from "./types.js";
+import { extractConversationIdFromUrl } from "./reattachHelpers.js";
 
 export interface BrowserExecutionResult {
   usage: {
@@ -25,6 +30,7 @@ export interface BrowserExecutionResult {
     turnId?: string | null;
     tabUrl?: string;
     conversationId?: string;
+    imageOutputPaths?: string[];
   };
 }
 
@@ -100,6 +106,7 @@ export async function runBrowserSessionExecution(
     log(chalk.dim("Chrome automation does not stream output; this may take a minute..."));
   }
   const persistRuntimeHint = deps.persistRuntimeHint ?? (() => {});
+  const imageGeneration = await resolveImageGenerationOptions(runOptions, cwd);
   let browserResult: BrowserRunResult;
   try {
     browserResult = await executeBrowser({
@@ -115,6 +122,7 @@ export async function runBrowserSessionExecution(
       log: automationLogger,
       heartbeatIntervalMs: runOptions.heartbeatIntervalMs,
       verbose: runOptions.verbose,
+      imageGeneration,
       runtimeHintCb: async (runtime) => {
         await persistRuntimeHint({
           ...runtime,
@@ -176,10 +184,41 @@ export async function runBrowserSessionExecution(
       userDataDir: browserResult.userDataDir,
       chromeTargetId: browserResult.chromeTargetId,
       tabUrl: browserResult.tabUrl,
-      conversationId: extractConversationIdFromUrl(browserResult.tabUrl ?? ''),
+      conversationId: extractConversationIdFromUrl(browserResult.tabUrl ?? ""),
       controllerPid: browserResult.controllerPid ?? process.pid,
     },
     answerText,
     response: browserResult.response,
+  };
+}
+
+async function resolveImageGenerationOptions(
+  runOptions: RunOracleOptions,
+  cwd: string,
+): Promise<BrowserRunOptions["imageGeneration"]> {
+  if (!runOptions.generateImages) {
+    return undefined;
+  }
+
+  if (runOptions.outputPath) {
+    return {
+      outputPath: path.isAbsolute(runOptions.outputPath)
+        ? runOptions.outputPath
+        : path.resolve(cwd, runOptions.outputPath),
+      aspectRatio: runOptions.aspectRatio,
+    };
+  }
+
+  if (runOptions.sessionId) {
+    const sessionPaths = await sessionStore.getPaths(runOptions.sessionId);
+    return {
+      outputPath: path.join(sessionPaths.dir, "images"),
+      aspectRatio: runOptions.aspectRatio,
+    };
+  }
+
+  return {
+    outputPath: path.join(cwd, "oracle-images"),
+    aspectRatio: runOptions.aspectRatio,
   };
 }

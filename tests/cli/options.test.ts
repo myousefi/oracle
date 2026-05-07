@@ -10,6 +10,7 @@ import {
   inferModelFromLabel,
   normalizeModelOption,
   parseHeartbeatOption,
+  parseImageAspectRatioOption,
   mergePathLikeOptions,
   dedupePathInputs,
 } from "../../src/cli/options.ts";
@@ -134,6 +135,20 @@ describe("parseHeartbeatOption", () => {
   test("rejects negative or non-numeric values", () => {
     expect(() => parseHeartbeatOption("-5")).toThrow(InvalidArgumentError);
     expect(() => parseHeartbeatOption("nope")).toThrow(InvalidArgumentError);
+  });
+});
+
+describe("parseImageAspectRatioOption", () => {
+  test("accepts supported ChatGPT image aspect ratios", () => {
+    expect(parseImageAspectRatioOption("1:1")).toBe("1:1");
+    expect(parseImageAspectRatioOption(" 3:4 ")).toBe("3:4");
+    expect(parseImageAspectRatioOption("9:16")).toBe("9:16");
+    expect(parseImageAspectRatioOption("4:3")).toBe("4:3");
+    expect(parseImageAspectRatioOption("16:9")).toBe("16:9");
+  });
+
+  test("rejects unsupported aspect ratios", () => {
+    expect(() => parseImageAspectRatioOption("2:3")).toThrow(InvalidArgumentError);
   });
 });
 

@@ -39,25 +39,35 @@ describe("sessionStore", () => {
         model: "gemini-3-pro",
         mode: "browser",
         waitPreference: false,
+        browserExecutor: "gemini",
         youtube: "https://example.com/video",
+        generateImages: true,
         generateImage: "in.png",
         editImage: "edit.png",
         outputPath: "out.png",
         aspectRatio: "1:1",
         geminiShowThoughts: true,
         geminiDeepResearch: true,
+        geminiWeb: {
+          generateImage: "in.png",
+          outputPath: "out.png",
+          aspectRatio: "1:1",
+        },
       },
       process.cwd(),
     );
     const fetched = await store.readSession(meta.id);
     expect(fetched?.options.waitPreference).toBe(false);
+    expect(fetched?.options.browserExecutor).toBe("gemini");
     expect(fetched?.options.youtube).toBe("https://example.com/video");
+    expect(fetched?.options.generateImages).toBe(true);
     expect(fetched?.options.generateImage).toBe("in.png");
     expect(fetched?.options.editImage).toBe("edit.png");
     expect(fetched?.options.outputPath).toBe("out.png");
     expect(fetched?.options.aspectRatio).toBe("1:1");
     expect(fetched?.options.geminiShowThoughts).toBe(true);
     expect(fetched?.options.geminiDeepResearch).toBe(true);
+    expect(fetched?.options.geminiWeb?.outputPath).toBe("out.png");
   });
 
   test("writes per-model logs and aggregates combined log", async () => {

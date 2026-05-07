@@ -42,6 +42,7 @@ export type ProModelName =
 export type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
 
 export type ThinkingTimeLevel = "light" | "standard" | "extended" | "heavy";
+export type ImageAspectRatio = "1:1" | "3:4" | "9:16" | "4:3" | "16:9";
 
 export interface AzureOptions {
   endpoint?: string;
@@ -178,6 +179,12 @@ export interface RunOracleOptions {
   background?: boolean;
   /** Optional absolute path to save only the assistant's final text output. */
   writeOutputPath?: string;
+  /** Browser-only: ask ChatGPT's composer image mode to generate images from the prompt. */
+  generateImages?: boolean;
+  /** Browser image output file or directory. */
+  outputPath?: string;
+  /** Browser image aspect ratio selected through the composer UI. */
+  aspectRatio?: ImageAspectRatio;
   /** Number of seconds to wait before timing out, or 'auto' to use model defaults. */
   timeoutSeconds?: number | "auto";
   /** Override HTTP client timeout (milliseconds). */

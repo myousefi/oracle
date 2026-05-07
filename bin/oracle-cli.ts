@@ -44,6 +44,7 @@ import {
   normalizeBaseUrl,
   inferModelFromLabel,
   parseHeartbeatOption,
+  parseImageAspectRatioOption,
   parseTimeoutOption,
   parseDurationOption,
   mergePathLikeOptions,
@@ -159,10 +160,12 @@ interface CliOptions extends OptionValues {
   remoteHost?: string;
   remoteToken?: string;
   youtube?: string;
+  generateImages?: boolean;
   generateImage?: string;
   editImage?: string;
   output?: string;
   aspect?: string;
+  aspectRatio?: string;
   geminiShowThoughts?: boolean;
   geminiDeepResearch?: boolean;
   copyMarkdown?: boolean;
@@ -645,6 +648,36 @@ program
   )
   .addOption(
     new Option(
+      "--generate-images",
+      "Generate images through ChatGPT browser image mode and save every returned image.",
+    ).default(false),
+  )
+  .addOption(
+    new Option(
+      "--generate-image <path>",
+      "Generate one image through Gemini web mode and write it to the given path.",
+    ),
+  )
+  .addOption(
+    new Option(
+      "--edit-image <path>",
+      "Edit an input image through Gemini web mode; pair with --output for the result path.",
+    ),
+  )
+  .addOption(new Option("--output <path>", "Image output file or directory."))
+  .addOption(
+    new Option(
+      "--aspect-ratio <ratio>",
+      "Image aspect ratio for ChatGPT image mode: 1:1, 3:4, 9:16, 4:3, or 16:9.",
+    ).argParser(parseImageAspectRatioOption),
+  )
+  .addOption(
+    new Option("--aspect <ratio>", "Alias for --aspect-ratio.")
+      .argParser(parseImageAspectRatioOption)
+      .hideHelp(),
+  )
+  .addOption(
+    new Option(
       "--gemini-show-thoughts",
       "Display Gemini thinking process (Gemini web/cookie mode only).",
     ).default(false),
@@ -1073,6 +1106,9 @@ function buildRunOptions(
     background: overrides.background ?? undefined,
     renderPlain: overrides.renderPlain ?? options.renderPlain ?? false,
     writeOutputPath: overrides.writeOutputPath ?? options.writeOutputPath,
+    generateImages: overrides.generateImages ?? options.generateImages ?? false,
+    outputPath: overrides.outputPath ?? options.output,
+    aspectRatio: overrides.aspectRatio ?? (options.aspectRatio as RunOracleOptions["aspectRatio"]),
   };
 }
 
@@ -1312,6 +1348,9 @@ function buildRunOptionsFromMetadata(metadata: SessionMetadata): RunOracleOption
     background: stored.background,
     renderPlain: stored.renderPlain,
     writeOutputPath: stored.writeOutputPath,
+    generateImages: stored.generateImages,
+    outputPath: stored.outputPath,
+    aspectRatio: stored.aspectRatio as RunOracleOptions["aspectRatio"],
   };
 }
 
@@ -1577,6 +1616,43 @@ async function runRootCommand(options: CliOptions): Promise<void> {
     throw new Error("Browser execution supports GPT, Gemini, and Grok models only.");
   }
   const resolvedModel: ModelName = normalizeChatGptModelForBrowser(primaryModelCandidate);
+  const imageAspectRatio = options.aspectRatio ?? options.aspect;
+  if (options.aspect && options.aspectRatio && options.aspect !== options.aspectRatio) {
+    throw new Error("--aspect and --aspect-ratio must match when both are provided.");
+  }
+  options.aspect = imageAspectRatio;
+  options.aspectRatio = imageAspectRatio;
+  if (options.generateImages && !resolvedModel.startsWith("gpt-")) {
+    throw new Error("--generate-images requires a ChatGPT/GPT browser model.");
+  }
+  if (options.generateImages && resolvedModel.includes("codex")) {
+    throw new Error("--generate-images requires a ChatGPT/GPT browser model.");
+  }
+  if (options.generateImages && remoteHost) {
+    throw new Error("--generate-images is only supported by local ChatGPT browser automation.");
+  }
+  if (options.generateImages && options.remoteChrome) {
+    throw new Error("--generate-images cannot be combined with --remote-chrome.");
+  }
+  if (options.generateImages && (options.generateImage || options.editImage)) {
+    throw new Error("--generate-images cannot be combined with Gemini image flags.");
+  }
+  if ((options.generateImage || options.editImage) && !resolvedModel.startsWith("gemini")) {
+    throw new Error("--generate-image and --edit-image require a Gemini model.");
+  }
+  if (
+    options.aspectRatio &&
+    !options.generateImages &&
+    !options.generateImage &&
+    !options.editImage
+  ) {
+    throw new Error(
+      "--aspect-ratio requires --generate-images, --generate-image, or --edit-image.",
+    );
+  }
+  if (options.output && !options.generateImages && !options.generateImage && !options.editImage) {
+    throw new Error("--output requires --generate-images, --generate-image, or --edit-image.");
+  }
   if (options.geminiDeepResearch && !resolvedModel.startsWith("gemini")) {
     throw new Error("--gemini-deep-research requires a Gemini model.");
   }
@@ -1911,6 +1987,7 @@ async function runRootCommand(options: CliOptions): Promise<void> {
       followupModel: resolvedOptions.followupModel,
       waitPreference,
       youtube: options.youtube,
+      generateImages: options.generateImages,
       generateImage: options.generateImage,
       editImage: options.editImage,
       outputPath: options.output,
@@ -2218,6 +2295,7 @@ async function restartSession(sessionId: string, options: RestartCommandOptions)
       followupModel: storedOptions.followupModel,
       waitPreference,
       youtube: storedOptions.youtube,
+      generateImages: storedOptions.generateImages,
       generateImage: storedOptions.generateImage,
       editImage: storedOptions.editImage,
       outputPath: storedOptions.outputPath,

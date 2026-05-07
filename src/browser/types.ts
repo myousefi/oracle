@@ -1,7 +1,7 @@
 import type CDP from "chrome-remote-interface";
 import type Protocol from "devtools-protocol";
 import type { BrowserRuntimeMetadata } from "../sessionStore.js";
-import type { ThinkingTimeLevel } from "../oracle/types.js";
+import type { ImageAspectRatio, ThinkingTimeLevel } from "../oracle/types.js";
 
 export type ChromeClient = Awaited<ReturnType<typeof CDP>>;
 export type CookieParam = Protocol.Network.CookieParam;
@@ -73,6 +73,10 @@ export interface BrowserRunOptions {
   log?: BrowserLogger;
   heartbeatIntervalMs?: number;
   verbose?: boolean;
+  imageGeneration?: {
+    outputPath: string;
+    aspectRatio?: ImageAspectRatio;
+  };
   /** Optional hook to persist runtime info (port/url/target) as soon as Chrome is ready. */
   runtimeHintCb?: (hint: BrowserRuntimeMetadata) => void | Promise<void>;
 }
@@ -128,7 +132,9 @@ export interface BrowserRunResult {
     tabUrl?: string;
     conversationId?: string;
     report?: BrowserReport | null;
+    imageOutputPaths?: string[];
   };
+  imageOutputPaths?: string[];
 }
 
 export type ResolvedBrowserConfig = Required<

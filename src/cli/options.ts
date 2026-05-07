@@ -2,7 +2,7 @@ import { InvalidArgumentError, type Command } from "commander";
 import { parseDuration } from "../browserMode.js";
 import path from "node:path";
 import fg from "fast-glob";
-import type { ModelName, PreviewMode } from "../oracle.js";
+import type { ImageAspectRatio, ModelName, PreviewMode } from "../oracle.js";
 import {
   CURRENT_GPT_INSTANT_MODEL,
   CURRENT_GPT_MODEL,
@@ -128,6 +128,18 @@ export function parseHeartbeatOption(value: string | number | undefined): number
     throw new InvalidArgumentError("Heartbeat interval must be zero or a positive number.");
   }
   return parsed;
+}
+
+export const SUPPORTED_IMAGE_ASPECT_RATIOS = ["1:1", "3:4", "9:16", "4:3", "16:9"] as const;
+
+export function parseImageAspectRatioOption(value: string): ImageAspectRatio {
+  const normalized = value.trim() as ImageAspectRatio;
+  if (SUPPORTED_IMAGE_ASPECT_RATIOS.includes(normalized)) {
+    return normalized;
+  }
+  throw new InvalidArgumentError(
+    `Aspect ratio must be one of ${SUPPORTED_IMAGE_ASPECT_RATIOS.join(", ")}.`,
+  );
 }
 
 export function usesDefaultStatusFilters(cmd: Command): boolean {

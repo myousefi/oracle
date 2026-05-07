@@ -1,13 +1,18 @@
-import path from 'node:path';
-import fs from 'node:fs/promises';
-import { createWriteStream } from 'node:fs';
-import type { WriteStream } from 'node:fs';
-import net from 'node:net';
-import type { BrowserModelStrategy, BrowserReport, CookieParam } from './browser/types.js';
-import type { TransportFailureReason, AzureOptions, ModelName, ThinkingTimeLevel } from './oracle.js';
-import { DEFAULT_MODEL, formatElapsed } from './oracle.js';
-import { safeModelSlug } from './oracle/modelResolver.js';
-import { getOracleHomeDir } from './oracleHome.js';
+import path from "node:path";
+import fs from "node:fs/promises";
+import { createWriteStream } from "node:fs";
+import type { WriteStream } from "node:fs";
+import net from "node:net";
+import type { BrowserModelStrategy, BrowserReport, CookieParam } from "./browser/types.js";
+import type {
+  TransportFailureReason,
+  AzureOptions,
+  ModelName,
+  ThinkingTimeLevel,
+} from "./oracle.js";
+import { DEFAULT_MODEL, formatElapsed } from "./oracle.js";
+import { safeModelSlug } from "./oracle/modelResolver.js";
+import { getOracleHomeDir } from "./oracleHome.js";
 
 export type SessionMode = "api" | "browser";
 
@@ -81,6 +86,7 @@ export interface SessionResponseMetadata {
   tabUrl?: string;
   conversationId?: string;
   report?: BrowserReport | null;
+  imageOutputPaths?: string[];
 }
 
 export interface SessionTransportMetadata {
@@ -132,10 +138,11 @@ export interface StoredRunOptions {
   /** Whether the run preferred to stay attached (true) or detach (false). */
   waitPreference?: boolean;
   /** Browser executor selector for detached runs (persisted for session replay/diagnostics). */
-  browserExecutor?: 'chatgpt' | 'remote' | 'grok' | 'gemini';
+  browserExecutor?: "chatgpt" | "remote" | "grok" | "gemini";
   /** Remote host used for browser automation (when browserExecutor is remote). */
   remoteHost?: string | null;
   youtube?: string;
+  generateImages?: boolean;
   generateImage?: string;
   editImage?: string;
   outputPath?: string;
@@ -464,13 +471,17 @@ export async function initializeSession(
       zombieUseLastActivity: options.zombieUseLastActivity,
       writeOutputPath: options.writeOutputPath,
       waitPreference: options.waitPreference,
+      browserExecutor: options.browserExecutor,
+      remoteHost: options.remoteHost,
       youtube: options.youtube,
+      generateImages: options.generateImages,
       generateImage: options.generateImage,
       editImage: options.editImage,
       outputPath: options.outputPath,
       aspectRatio: options.aspectRatio,
       geminiShowThoughts: options.geminiShowThoughts,
       geminiDeepResearch: options.geminiDeepResearch,
+      geminiWeb: options.geminiWeb,
     },
   };
   await ensureDir(modelsDir(sessionId));
