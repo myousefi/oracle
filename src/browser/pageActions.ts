@@ -23,3 +23,9 @@ export {
   buildMarkdownFallbackExtractorForTest,
   buildCopyExpressionForTest,
 } from "./actions/assistantResponse.js";
+export {
+  ensureChatGptImageMode,
+  waitForChatGptGeneratedImages,
+  buildEnsureImageModeExpressionForTest,
+  buildImageSnapshotExpressionForTest,
+} from "./actions/imageGeneration.js";

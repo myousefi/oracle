@@ -28,6 +28,8 @@ export async function submitPrompt(
     attachmentNames?: string[];
     baselineTurns?: number | null;
     inputTimeoutMs?: number | null;
+    skipSearch?: boolean;
+    forceExactPrompt?: boolean;
   },
   prompt: string,
   logger: BrowserLogger,
@@ -35,7 +37,6 @@ export async function submitPrompt(
   const { runtime, input } = deps;
 
   await waitForDomReady(runtime, logger, deps.inputTimeoutMs ?? undefined);
-  const encodedPrompt = JSON.stringify(prompt);
   const focusResult = await runtime.evaluate({
     expression: `(() => {
       ${buildClickDispatcher()}
@@ -106,7 +107,9 @@ export async function submitPrompt(
   // before the send button becomes enabled; give it a short breather to avoid races.
   await delay(500);
 
-  await ensureChatGptSearchEnabled(runtime, logger);
+  if (!deps.skipSearch) {
+    await ensureChatGptSearchEnabled(runtime, logger);
+  }
 
   const primarySelectorLiteral = JSON.stringify(PROMPT_PRIMARY_SELECTOR);
   const fallbackSelectorLiteral = JSON.stringify(PROMPT_FALLBACK_SELECTOR);
@@ -144,23 +147,22 @@ export async function submitPrompt(
   const editorTextTrimmed = editorTextRaw?.trim?.() ?? "";
   const fallbackValueTrimmed = fallbackValueRaw?.trim?.() ?? "";
   const activeValueTrimmed = activeValueRaw?.trim?.() ?? "";
-  if (!editorTextTrimmed && !fallbackValueTrimmed && !activeValueTrimmed) {
-    // Learned: occasionally Input.insertText doesn't land in the editor; force textContent/value + input events.
+  const exactPromptTrimmed = prompt.trim();
+  const observedPromptValues = [editorTextTrimmed, fallbackValueTrimmed, activeValueTrimmed].filter(
+    Boolean,
+  );
+  const needsExactPromptWrite =
+    deps.forceExactPrompt &&
+    (observedPromptValues.length === 0 ||
+      observedPromptValues.some((value) => value !== exactPromptTrimmed));
+  if (
+    (!editorTextTrimmed && !fallbackValueTrimmed && !activeValueTrimmed) ||
+    needsExactPromptWrite
+  ) {
+    // Force the visible editor and fallback fields through DOM input events so
+    // ChatGPT's React state matches the exact prompt we intend to send.
     await runtime.evaluate({
-      expression: `(() => {
-        const fallback = document.querySelector(${fallbackSelectorLiteral});
-        if (fallback) {
-          fallback.value = ${encodedPrompt};
-          fallback.dispatchEvent(new InputEvent('input', { bubbles: true, data: ${encodedPrompt}, inputType: 'insertFromPaste' }));
-          fallback.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-        const editor = document.querySelector(${primarySelectorLiteral});
-        if (editor) {
-          editor.textContent = ${encodedPrompt};
-          // Nudge ProseMirror to register the textContent write so its state/send-button updates
-          editor.dispatchEvent(new InputEvent('input', { bubbles: true, data: ${encodedPrompt}, inputType: 'insertFromPaste' }));
-        }
-      })()`,
+      expression: buildSetPromptTextExpression(prompt),
     });
   }
 
@@ -240,6 +242,48 @@ export async function submitPrompt(
     logger,
     deps.baselineTurns ?? undefined,
   );
+}
+
+function buildSetPromptTextExpression(prompt: string): string {
+  const encodedPrompt = JSON.stringify(prompt);
+  const primarySelectorLiteral = JSON.stringify(PROMPT_PRIMARY_SELECTOR);
+  const fallbackSelectorLiteral = JSON.stringify(PROMPT_FALLBACK_SELECTOR);
+  const inputSelectorsLiteral = JSON.stringify(INPUT_SELECTORS);
+  return `(() => {
+    const value = ${encodedPrompt};
+    const fallback = document.querySelector(${fallbackSelectorLiteral});
+    const editor = document.querySelector(${primarySelectorLiteral});
+    const inputSelectors = ${inputSelectorsLiteral};
+    const dispatchInput = (node) => {
+      const event =
+        typeof InputEvent === 'function'
+          ? new InputEvent('input', { bubbles: true, data: value, inputType: 'insertFromPaste' })
+          : new Event('input', { bubbles: true });
+      node.dispatchEvent(event);
+      node.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    const write = (node) => {
+      if (!node) return false;
+      if (node instanceof HTMLTextAreaElement || node instanceof HTMLInputElement) {
+        node.value = value;
+        dispatchInput(node);
+        return true;
+      }
+      if (node.isContentEditable || node.getAttribute('contenteditable') === 'true') {
+        node.textContent = value;
+        dispatchInput(node);
+        return true;
+      }
+      return false;
+    };
+    let updated = false;
+    updated = write(fallback) || updated;
+    updated = write(editor) || updated;
+    for (const selector of inputSelectors) {
+      updated = write(document.querySelector(selector)) || updated;
+    }
+    return { updated };
+  })()`;
 }
 
 export async function clearPromptComposer(Runtime: ChromeClient["Runtime"], logger: BrowserLogger) {
@@ -739,6 +783,7 @@ async function verifyPromptCommitted(
 // biome-ignore lint/style/useNamingConvention: test-only export used in vitest suite
 export const __test__ = {
   buildEnableChatGptSearchExpression,
+  buildSetPromptTextExpression,
   ensureChatGptSearchEnabled,
   verifyPromptCommitted,
 };

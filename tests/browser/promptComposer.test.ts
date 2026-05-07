@@ -160,6 +160,43 @@ describe("promptComposer", () => {
     }
   });
 
+  test("set prompt expression replaces stale composer text", () => {
+    const dom = new JSDOM(
+      `
+        <body>
+          <form>
+            <textarea name="prompt-textarea">stale composer draft</textarea>
+            <div id="prompt-textarea" contenteditable="true">stale composer draft</div>
+          </form>
+        </body>
+      `,
+      { runScripts: "dangerously" },
+    );
+    try {
+      let inputEvents = 0;
+      dom.window.document.addEventListener("input", () => {
+        inputEvents += 1;
+      });
+
+      const prompt = "A minimal black and cyan oracle eye icon";
+      const expression = promptComposer.buildSetPromptTextExpression(prompt);
+      const result = dom.window.eval(expression) as { updated?: boolean };
+
+      expect(result?.updated).toBe(true);
+      expect(
+        (
+          dom.window.document.querySelector(
+            'textarea[name="prompt-textarea"]',
+          ) as HTMLTextAreaElement
+        ).value,
+      ).toBe(prompt);
+      expect(dom.window.document.querySelector("#prompt-textarea")?.textContent).toBe(prompt);
+      expect(inputEvents).toBeGreaterThan(0);
+    } finally {
+      dom.window.close();
+    }
+  });
+
   test("does not treat cleared composer + stop button as committed without a new turn", async () => {
     vi.useFakeTimers();
     try {

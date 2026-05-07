@@ -12,6 +12,8 @@ interface ChatgptDomProviderState {
   inputTimeoutMs?: number;
   baselineTurns?: number | null;
   attachmentNames?: string[];
+  skipSearch?: boolean;
+  forceExactPrompt?: boolean;
   committedTurns?: number | null;
 }
 
@@ -41,6 +43,8 @@ async function submitPromptViaAdapter(ctx: ProviderDomFlowContext): Promise<void
       attachmentNames: state.attachmentNames ?? [],
       baselineTurns: state.baselineTurns ?? undefined,
       inputTimeoutMs: state.inputTimeoutMs ?? undefined,
+      skipSearch: state.skipSearch,
+      forceExactPrompt: state.forceExactPrompt,
     },
     ctx.prompt,
     state.logger,
