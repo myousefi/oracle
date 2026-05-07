@@ -63,27 +63,28 @@ export function applyHelpStyling(program: Command, version: string, isTty: boole
 }
 
 function renderHelpBanner(version: string, colors: HelpColors): string {
-  const subtitle = 'Prompt + files required — GPT-5.4 Pro/GPT-5.4 for tough questions with code/file context.';
+  const subtitle =
+    "Prompt + files required — GPT-5.5 Pro/GPT-5.5 for tough questions with code/file context.";
   return `${colors.banner(`Oracle CLI v${version}`)} ${colors.subtitle(`— ${subtitle}`)}\n`;
 }
 
 function renderHelpFooter(program: Command, colors: HelpColors): string {
   const tips = [
-    `${colors.bullet('•')} Required: always pass a prompt AND ${colors.accent('--file …')} (directories/globs are fine); Oracle cannot see your project otherwise.`,
-    `${colors.bullet('•')} Attach lots of source (whole directories beat single files) and keep total input under ~196k tokens.`,
-    `${colors.bullet('•')} Oracle starts empty—open with a short project briefing (stack, services, build steps), spell out the question and prior attempts, and why it matters; the more explanation and context you provide, the better the response will be.`,
-    `${colors.bullet('•')} Spell out the project + platform + version requirements (repo name, target OS/toolchain versions, API dependencies) so Oracle doesn’t guess defaults.`,
-    `${colors.bullet('•')} When comparing multiple repos/files, spell out each repo + path + role (e.g., “Project A SettingsView → apps/project-a/Sources/SettingsView.swift; Project B SettingsView → ../project-b/mac/...”) so the model knows exactly which file is which.`,
-    `${colors.bullet('•')} Best results: 6–30 sentences plus key source files; very short prompts often yield generic answers.`,
-    `${colors.bullet('•')} Oracle is one-shot: it does not remember prior runs, so start fresh each time with full context.`,
-    `${colors.bullet('•')} Run ${colors.accent('--files-report')} to inspect token spend before launching your browser session.`,
-    `${colors.bullet('•')} Non-preview runs may detach for long browser sessions. If the CLI times out, do not re-run — reattach with ${colors.accent('oracle session <slug>')} to resume/inspect the existing run.`,
-    `${colors.bullet('•')} Set a memorable 3–5 word slug via ${colors.accent('--slug "<words>"')} to keep session IDs tidy.`,
-    `${colors.bullet('•')} Finished sessions auto-hide preamble logs when reattached; raw timestamps remain in the saved log file.`,
-    `${colors.bullet('•')} Need hidden flags? Run ${colors.accent(`${program.name()} --help --verbose`)} to list search/token/browser overrides.`,
-    `${colors.bullet('•')} If any Oracle session is already running, do not start duplicate runs. Attach to the existing browser session instead.`,
-    `${colors.bullet('•')} Duplicate prompt guard: if the same prompt is already running, new runs are blocked unless you pass ${colors.accent('--force')}—prefer reattaching instead of spawning duplicates.`,
-  ].join('\n');
+    `${colors.bullet("•")} Required: always pass a prompt AND ${colors.accent("--file …")} (directories/globs are fine); Oracle cannot see your project otherwise.`,
+    `${colors.bullet("•")} Attach lots of source (whole directories beat single files) and keep total input under ~196k tokens.`,
+    `${colors.bullet("•")} Oracle starts empty—open with a short project briefing (stack, services, build steps), spell out the question and prior attempts, and why it matters; the more explanation and context you provide, the better the response will be.`,
+    `${colors.bullet("•")} Spell out the project + platform + version requirements (repo name, target OS/toolchain versions, API dependencies) so Oracle doesn’t guess defaults.`,
+    `${colors.bullet("•")} When comparing multiple repos/files, spell out each repo + path + role (e.g., “Project A SettingsView → apps/project-a/Sources/SettingsView.swift; Project B SettingsView → ../project-b/mac/...”) so the model knows exactly which file is which.`,
+    `${colors.bullet("•")} Best results: 6–30 sentences plus key source files; very short prompts often yield generic answers.`,
+    `${colors.bullet("•")} Oracle is one-shot: it does not remember prior runs, so start fresh each time with full context.`,
+    `${colors.bullet("•")} Run ${colors.accent("--files-report")} to inspect token spend before launching your browser session.`,
+    `${colors.bullet("•")} Non-preview runs may detach for long browser sessions. If the CLI times out, do not re-run — reattach with ${colors.accent("oracle session <slug>")} to resume/inspect the existing run.`,
+    `${colors.bullet("•")} Set a memorable 3–5 word slug via ${colors.accent('--slug "<words>"')} to keep session IDs tidy.`,
+    `${colors.bullet("•")} Finished sessions auto-hide preamble logs when reattached; raw timestamps remain in the saved log file.`,
+    `${colors.bullet("•")} Need hidden flags? Run ${colors.accent(`${program.name()} --help --verbose`)} to list search/token/browser overrides.`,
+    `${colors.bullet("•")} If any Oracle session is already running, do not start duplicate runs. Attach to the existing browser session instead.`,
+    `${colors.bullet("•")} Duplicate prompt guard: if the same prompt is already running, new runs are blocked unless you pass ${colors.accent("--force")}—prefer reattaching instead of spawning duplicates.`,
+  ].join("\n");
 
   const formatExample = (command: string, description: string): string =>
     `${colors.command(`  ${command}`)}\n${colors.muted(`    ${description}`)}`;
@@ -94,8 +95,8 @@ function renderHelpFooter(program: Command, colors: HelpColors): string {
       "Build the bundle, print it, and copy it for manual paste into ChatGPT.",
     ),
     formatExample(
-      `${program.name()} --prompt "Cross-check the data layer assumptions" --model gpt-5.4-pro --file "src/**/*.ts"`,
-      'Run browser automation with a single model and strong source context.',
+      `${program.name()} --prompt "Cross-check the data layer assumptions" --model gpt-5.5-pro --file "src/**/*.ts"`,
+      "Run browser automation with a single model and strong source context.",
     ),
     formatExample(
       `${program.name()} status --hours 72 --limit 50`,

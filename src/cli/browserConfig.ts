@@ -1,13 +1,13 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import type { BrowserSessionConfig } from '../sessionStore.js';
-import type { ModelName, ThinkingTimeLevel } from '../oracle.js';
+import fs from "node:fs/promises";
+import path from "node:path";
+import type { BrowserSessionConfig } from "../sessionStore.js";
+import type { ModelName, ThinkingTimeLevel } from "../oracle.js";
 import {
   CURRENT_GPT_INSTANT_MODEL,
   CURRENT_GPT_MODEL,
   CURRENT_GPT_PRO_MODEL,
   CURRENT_GPT_THINKING_MODEL,
-} from '../oracle.js';
+} from "../oracle.js";
 import {
   CHATGPT_URL,
   DEFAULT_MODEL_STRATEGY,
@@ -15,11 +15,11 @@ import {
   isTemporaryChatUrl,
   normalizeChatgptUrl,
   parseDuration,
-} from '../browserMode.js';
-import { normalizeBrowserModelStrategy } from '../browser/modelStrategy.js';
-import type { BrowserModelStrategy } from '../browser/types.js';
-import type { CookieParam } from '../browser/types.js';
-import { getOracleHomeDir } from '../oracleHome.js';
+} from "../browserMode.js";
+import { normalizeBrowserModelStrategy } from "../browser/modelStrategy.js";
+import type { BrowserModelStrategy } from "../browser/types.js";
+import type { CookieParam } from "../browser/types.js";
+import { getOracleHomeDir } from "../oracleHome.js";
 
 const DEFAULT_BROWSER_TIMEOUT_MS = 1_200_000;
 const DEFAULT_BROWSER_INPUT_TIMEOUT_MS = 60_000;
@@ -31,19 +31,25 @@ const DEFAULT_CHROME_PROFILE = "Default";
 // The browser label is passed to the model picker which fuzzy-matches against ChatGPT's UI.
 const BROWSER_MODEL_LABELS: [ModelName, string][] = [
   // Most specific first so explicit variants win over generic aliases.
-  ['gpt-5.4-pro', 'GPT-5.4 Pro'],
-  ['gpt-5.2-pro', 'GPT-5.4 Pro'],
-  ['gpt-5.1-pro', 'GPT-5.4 Pro'],
-  ['gpt-5-pro', 'GPT-5.4 Pro'],
-  ['gpt-5.4-thinking', 'GPT-5.4 Thinking'],
-  ['gpt-5.2-thinking', 'GPT-5.4 Thinking'],
-  ['gpt-5.3-instant', 'GPT-5.3 Instant'],
-  ['gpt-5.2-instant', 'GPT-5.3 Instant'],
+  ["gpt-5.5-pro", "GPT-5.5 Pro"],
+  ["gpt-5.4-pro", "GPT-5.5 Pro"],
+  ["gpt-5.2-pro", "GPT-5.5 Pro"],
+  ["gpt-5.1-pro", "GPT-5.5 Pro"],
+  ["gpt-5-pro", "GPT-5.5 Pro"],
+  ["gpt-5.5-thinking", "GPT-5.5 Thinking"],
+  ["gpt-5.4-thinking", "GPT-5.5 Thinking"],
+  ["gpt-5.2-thinking", "GPT-5.5 Thinking"],
+  ["gpt-5.3-instant", "GPT-5.3 Instant"],
+  ["gpt-5.2-instant", "GPT-5.3 Instant"],
   // Base models last (least specific)
-  ['gpt-5.4', 'GPT-5.4 Thinking'],
-  ['gpt-5.2', 'GPT-5.4 Thinking'],
-  ['gpt-5.1', 'GPT-5.4 Thinking'],
-  ['gemini-3-pro', 'Gemini 3 Pro'],
+  ["gpt-5.5", "GPT-5.5 Thinking"],
+  ["gpt-5.4", "GPT-5.5 Thinking"],
+  ["gpt-5.2", "GPT-5.5 Thinking"],
+  ["gpt-5.1", "GPT-5.5 Thinking"],
+  ["gemini-3.1-pro", "Gemini 3.1 Pro"],
+  ["gemini-3-pro", "Gemini 3.1 Pro"],
+  ["gemini-3-flash", "Gemini 3 Flash"],
+  ["gemini-3.1-flash-lite", "Gemini 3.1 Flash-Lite"],
 ];
 
 export interface BrowserFlagOptions {
@@ -90,22 +96,28 @@ export function normalizeChatGptModelForBrowser(model: ModelName): ModelName {
   }
 
   if (
-    normalized === 'gpt-5-pro' ||
-    normalized === 'gpt-5.1-pro' ||
-    normalized === 'gpt-5.2-pro' ||
+    normalized === "gpt-5-pro" ||
+    normalized === "gpt-5.1-pro" ||
+    normalized === "gpt-5.2-pro" ||
+    normalized === "gpt-5.4-pro" ||
     normalized === CURRENT_GPT_PRO_MODEL
   ) {
     return CURRENT_GPT_PRO_MODEL;
   }
-  if (normalized === 'gpt-5.2-thinking' || normalized === CURRENT_GPT_THINKING_MODEL) {
+  if (
+    normalized === "gpt-5.2-thinking" ||
+    normalized === "gpt-5.4-thinking" ||
+    normalized === CURRENT_GPT_THINKING_MODEL
+  ) {
     return CURRENT_GPT_THINKING_MODEL;
   }
-  if (normalized === 'gpt-5.2-instant' || normalized === CURRENT_GPT_INSTANT_MODEL) {
+  if (normalized === "gpt-5.2-instant" || normalized === CURRENT_GPT_INSTANT_MODEL) {
     return CURRENT_GPT_INSTANT_MODEL;
   }
   if (
-    normalized === 'gpt-5.1' ||
-    normalized === 'gpt-5.2' ||
+    normalized === "gpt-5.1" ||
+    normalized === "gpt-5.2" ||
+    normalized === "gpt-5.4" ||
     normalized === CURRENT_GPT_MODEL
   ) {
     return CURRENT_GPT_MODEL;
@@ -120,8 +132,9 @@ export async function buildBrowserConfig(
   const desiredModelOverride = options.browserModelLabel?.trim();
   const normalizedOverride = desiredModelOverride?.toLowerCase() ?? "";
   const baseModel = options.model.toLowerCase();
-  const isChatGptModel = baseModel.startsWith('gpt-') && !baseModel.includes('codex');
-  const shouldUseOverride = !isChatGptModel && normalizedOverride.length > 0 && normalizedOverride !== baseModel;
+  const isChatGptModel = baseModel.startsWith("gpt-") && !baseModel.includes("codex");
+  const shouldUseOverride =
+    !isChatGptModel && normalizedOverride.length > 0 && normalizedOverride !== baseModel;
   let modelStrategy =
     normalizeBrowserModelStrategy(options.browserModelStrategy) ?? DEFAULT_MODEL_STRATEGY;
   const cookieNames = parseCookieNames(
@@ -145,9 +158,9 @@ export async function buildBrowserConfig(
   const rawUrl = options.chatgptUrl ?? options.browserUrl;
   const url = rawUrl ? normalizeChatgptUrl(rawUrl, CHATGPT_URL) : undefined;
 
-  const isGrokModel = baseModel.startsWith('grok');
+  const isGrokModel = baseModel.startsWith("grok");
   if (isGrokModel) {
-    modelStrategy = 'ignore';
+    modelStrategy = "ignore";
   }
 
   const desiredModel = isChatGptModel
@@ -155,8 +168,7 @@ export async function buildBrowserConfig(
     : shouldUseOverride
       ? desiredModelOverride
       : isGrokModel
-        ? desiredModelOverride ?? resolveGrokBrowserLabel(options.model)
-            ?? null
+        ? (desiredModelOverride ?? resolveGrokBrowserLabel(options.model) ?? null)
         : options.model;
 
   if (
@@ -166,8 +178,8 @@ export async function buildBrowserConfig(
     /\bpro\b/i.test(desiredModel ?? "")
   ) {
     throw new Error(
-      'Temporary Chat mode does not expose Pro models in the ChatGPT model picker. ' +
-        'Remove "temporary-chat=true" from --chatgpt-url (or omit --chatgpt-url), or use a non-Pro model (e.g. --model gpt-5.4).',
+      "Temporary Chat mode does not expose Pro models in the ChatGPT model picker. " +
+        'Remove "temporary-chat=true" from --chatgpt-url (or omit --chatgpt-url), or use a non-Pro model (e.g. --model gpt-5.5).',
     );
   }
 
@@ -259,33 +271,34 @@ export function resolveBrowserModelLabel(input: string | undefined, model: Model
 }
 
 export function resolveGrokBrowserLabel(input: string | undefined): string | null {
-  const normalized = input?.toLowerCase?.().replace(/\s+/g, ' ').trim() ?? '';
-  if (!normalized || !normalized.includes('grok')) {
+  const normalized = input?.toLowerCase?.().replace(/\s+/g, " ").trim() ?? "";
+  if (!normalized || !normalized.includes("grok")) {
     return null;
   }
-  if (normalized.includes('auto')) return 'Auto';
-  if (normalized.includes('fast')) return 'Fast';
-  if (normalized.includes('heavy') || normalized.includes('team')) return 'Heavy';
-  if (
-    normalized === 'grok-4.3' ||
-    normalized === 'grok 4.3' ||
-    normalized === '4.3' ||
-    normalized.includes('4.3') ||
-    normalized.includes('beta') ||
-    normalized.includes('early access')
-  ) {
-    return 'Grok 4.3 (beta)';
+  if (normalized.includes("auto")) return "Auto";
+  if (normalized.includes("fast") || normalized.includes("4.1") || normalized.includes("4-1")) {
+    return "Fast";
   }
   if (
-    normalized === 'grok' ||
-    normalized === 'grok-4.20' ||
-    normalized === 'grok 4.20' ||
-    normalized === '4.20' ||
-    normalized.includes('4.20') ||
-    normalized.includes('thinking') ||
-    normalized.includes('expert')
+    normalized.includes("heavy") ||
+    normalized.includes("team") ||
+    normalized.includes("multi") ||
+    normalized.includes("4.20") ||
+    normalized.includes("4-20")
   ) {
-    return 'Expert';
+    return "Heavy";
+  }
+  if (
+    normalized === "grok" ||
+    normalized === "grok-4.3" ||
+    normalized === "grok 4.3" ||
+    normalized === "4.3" ||
+    normalized.includes("4.3") ||
+    normalized.includes("beta") ||
+    normalized.includes("thinking") ||
+    normalized.includes("expert")
+  ) {
+    return "Expert";
   }
   return null;
 }

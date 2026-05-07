@@ -16,6 +16,12 @@ export const GEMINI_DEEP_THINK_SELECTORS = {
     'div[contenteditable="true"]',
   ],
   sendButton: ["button.send-button", 'button[aria-label="Send message"]'],
+  modeButton: [
+    'button[aria-label="Open mode picker"]',
+    "button.input-area-switch.mat-mdc-menu-trigger",
+    'button[aria-haspopup="menu"].input-area-switch',
+  ],
+  modeMenuItem: ['[role="menuitem"]', ".bard-mode-list-button"],
   toolsButton: ["button.toolbox-drawer-button", 'button[aria-label="Tools"]'],
   toolsMenuItem: ['[role="menuitemcheckbox"]', ".toolbox-drawer-item-list-button"],
   deepThinkActive: [
@@ -97,7 +103,78 @@ async function waitForUi(ctx: ProviderDomFlowContext): Promise<void> {
   }
 }
 
+async function selectThinkingModeFromModePicker(ctx: ProviderDomFlowContext): Promise<boolean> {
+  const modeButtonSelectors = asSelectorLiteral(GEMINI_DEEP_THINK_SELECTORS.modeButton);
+  const modeClickResult = await ctx.evaluate<string>(
+    `(() => {
+      const buttons = Array.from(document.querySelectorAll(${modeButtonSelectors}));
+      for (const button of buttons) {
+        if (!(button instanceof HTMLElement)) continue;
+        const label = button.getAttribute('aria-label')?.toLowerCase() ?? '';
+        const text = button.textContent?.trim().toLowerCase() ?? '';
+        if (!label.includes('mode picker') && !text.match(/\\b(fast|thinking|pro)\\b/)) continue;
+        button.click();
+        return 'clicked';
+      }
+      return 'not-found';
+    })()`,
+  );
+  if (modeClickResult !== "clicked") {
+    return false;
+  }
+  await ctx.delay(750);
+
+  const modeMenuItemSelectors = asSelectorLiteral(GEMINI_DEEP_THINK_SELECTORS.modeMenuItem);
+  const modeItemResult = await ctx.evaluate<string>(
+    `(() => {
+      const items = Array.from(document.querySelectorAll(${modeMenuItemSelectors}));
+      for (const item of items) {
+        if (!(item instanceof HTMLElement)) continue;
+        const text = item.textContent?.trim().toLowerCase() ?? '';
+        if (!text.includes('thinking')) continue;
+        const disabled =
+          item.getAttribute('aria-disabled') === 'true' ||
+          item.hasAttribute('disabled') ||
+          item.classList.contains('mat-mdc-menu-item-disabled');
+        if (disabled) return 'disabled';
+        item.click();
+        return 'clicked';
+      }
+      return 'not-found';
+    })()`,
+  );
+  if (modeItemResult === "disabled") {
+    throw new Error(
+      'Gemini shows "Thinking" in the mode picker, but it is disabled for this account/session.',
+    );
+  }
+  if (modeItemResult !== "clicked") {
+    return false;
+  }
+  await ctx.delay(1_000);
+
+  const modeActiveSelectors = asSelectorLiteral(GEMINI_DEEP_THINK_SELECTORS.modeButton);
+  const active = await ctx.evaluate<boolean>(
+    `(() => {
+      const buttons = Array.from(document.querySelectorAll(${modeActiveSelectors}));
+      return buttons.some((button) => {
+        if (!(button instanceof HTMLElement)) return false;
+        const text = button.textContent?.trim().toLowerCase() ?? '';
+        return text.includes('thinking');
+      });
+    })()`,
+  );
+  if (!active) {
+    throw new Error("Gemini Thinking mode did not appear selected after clicking the mode picker.");
+  }
+  return true;
+}
+
 async function selectMode(ctx: ProviderDomFlowContext): Promise<void> {
+  if (await selectThinkingModeFromModePicker(ctx)) {
+    return;
+  }
+
   const toolsButtonSelectors = asSelectorLiteral(GEMINI_DEEP_THINK_SELECTORS.toolsButton);
   const toolsClickResult = await ctx.evaluate<string>(
     `(() => {

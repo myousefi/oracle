@@ -1,13 +1,13 @@
-import type { RunOracleOptions, ModelName } from '../oracle.js';
-import { DEFAULT_MODEL, MODEL_CONFIGS } from '../oracle.js';
-import type { UserConfig } from '../config.js';
-import type { EngineMode } from './engine.js';
-import { resolveEngine } from './engine.js';
-import { normalizeModelOption, inferModelFromLabel, normalizeBaseUrl } from './options.js';
-import { resolveGeminiModelId } from '../oracle/gemini.js';
-import { PromptValidationError } from '../oracle/errors.js';
-import { normalizeChatGptModelForBrowser } from './browserConfig.js';
-import { resolveConfiguredMaxFileSizeBytes } from './fileSize.js';
+import type { RunOracleOptions, ModelName } from "../oracle.js";
+import { DEFAULT_MODEL, MODEL_CONFIGS } from "../oracle.js";
+import type { UserConfig } from "../config.js";
+import type { EngineMode } from "./engine.js";
+import { resolveEngine } from "./engine.js";
+import { normalizeModelOption, inferModelFromLabel, normalizeBaseUrl } from "./options.js";
+import { resolveGeminiModelId } from "../oracle/gemini.js";
+import { PromptValidationError } from "../oracle/errors.js";
+import { normalizeChatGptModelForBrowser } from "./browserConfig.js";
+import { resolveConfiguredMaxFileSizeBytes } from "./fileSize.js";
 
 export interface ResolveRunOptionsInput {
   prompt: string;
@@ -34,11 +34,13 @@ export function resolveRunOptionsFromConfig({
   env = process.env,
 }: ResolveRunOptionsInput): ResolvedRunOptions {
   if (
-    engine === 'api' ||
-    userConfig?.engine === 'api' ||
-    (env.ORACLE_ENGINE ?? '').trim().toLowerCase() === 'api'
+    engine === "api" ||
+    userConfig?.engine === "api" ||
+    (env.ORACLE_ENGINE ?? "").trim().toLowerCase() === "api"
   ) {
-    throw new PromptValidationError('API engine is disabled in this branch. Browser execution is required.');
+    throw new PromptValidationError(
+      "API engine is disabled in this branch. Browser execution is required.",
+    );
   }
   const resolvedEngine = resolveEngineWithConfig({ engine, configEngine: userConfig?.engine, env });
   const requestedModelList = Array.isArray(models) ? models : [];
@@ -48,27 +50,30 @@ export function resolveRunOptionsFromConfig({
 
   const cliModelArg = normalizeModelOption(model ?? userConfig?.model) || DEFAULT_MODEL;
   if (normalizedRequestedModels.length > 1) {
-    throw new PromptValidationError('Multi-model execution is not supported in browser-only mode.');
+    throw new PromptValidationError("Multi-model execution is not supported in browser-only mode.");
   }
 
   const selectedRawModel =
-    normalizedRequestedModels.length === 0 ? cliModelArg : normalizedRequestedModels[0] ?? DEFAULT_MODEL;
+    normalizedRequestedModels.length === 0
+      ? cliModelArg
+      : (normalizedRequestedModels[0] ?? DEFAULT_MODEL);
   const inferredModel = inferModelFromLabel(selectedRawModel);
-  // Browser engine maps legacy aliases to the live ChatGPT picker targets (GPT-5.4 Thinking / GPT-5.4 Pro / GPT-5.3 Instant).
+  // Browser engine maps legacy aliases to the live ChatGPT picker targets (GPT-5.5 Thinking / GPT-5.5 Pro / GPT-5.3 Instant).
   const resolvedModel = normalizeChatGptModelForBrowser(inferredModel);
   const isBrowserCompatible = (m: string) =>
-    (m.startsWith('gpt-') && !m.includes('codex')) || m.startsWith('gemini') || m.startsWith('grok');
+    (m.startsWith("gpt-") && !m.includes("codex")) ||
+    m.startsWith("gemini") ||
+    m.startsWith("grok");
   if (!isBrowserCompatible(resolvedModel)) {
     throw new PromptValidationError(
-      'Browser-only mode supports GPT, Gemini, and Grok models only.',
-      { engine: 'browser' },
+      "Browser-only mode supports GPT, Gemini, and Grok models only.",
+      { engine: "browser" },
     );
   }
 
-  const isGrok = resolvedModel.startsWith('grok');
+  const isGrok = resolvedModel.startsWith("grok");
   const baseUrl = normalizeBaseUrl(
-    userConfig?.apiBaseUrl ??
-      (isGrok ? env.XAI_BASE_URL : env.OPENAI_BASE_URL),
+    userConfig?.apiBaseUrl ?? (isGrok ? env.XAI_BASE_URL : env.OPENAI_BASE_URL),
   );
 
   const promptWithSuffix =
@@ -99,7 +104,7 @@ export function resolveRunOptionsFromConfig({
     effectiveModelId,
   };
 
-  return { runOptions, resolvedEngine: 'browser' };
+  return { runOptions, resolvedEngine };
 }
 
 function resolveEngineWithConfig({
@@ -111,8 +116,14 @@ function resolveEngineWithConfig({
   configEngine?: EngineMode;
   env: NodeJS.ProcessEnv;
 }): EngineMode {
-  if (engine === 'api' || configEngine === 'api' || (env.ORACLE_ENGINE ?? '').trim().toLowerCase() === 'api') {
-    throw new PromptValidationError('API engine is disabled in this branch. Browser execution is required.');
+  if (
+    engine === "api" ||
+    configEngine === "api" ||
+    (env.ORACLE_ENGINE ?? "").trim().toLowerCase() === "api"
+  ) {
+    throw new PromptValidationError(
+      "API engine is disabled in this branch. Browser execution is required.",
+    );
   }
   if (engine) return engine;
   if (configEngine) return configEngine;

@@ -1,16 +1,21 @@
-import path from 'node:path';
-import type { BrowserRunOptions, BrowserRunResult, BrowserLogger, CookieParam } from '../browser/types.js';
-import { getCookies } from '@steipete/sweet-cookie';
-import { runProviderDomFlow } from '../browser/providerDomFlow.js';
-import { geminiDeepThinkDomProvider } from '../browser/providers/index.js';
-import { delay } from '../browser/utils.js';
-import { runGeminiWebWithFallback, saveFirstGeminiImageFromOutput } from './client.js';
-import type { GeminiWebModelId } from './client.js';
-import type { GeminiWebOptions, GeminiWebResponse } from './types.js';
-import { runGeminiDeepResearchBrowser } from './deepResearchExecutor.js';
-import { openGeminiBrowserSession } from './browserSessionManager.js';
-import { selectGeminiExecutionMode } from './executionMode.js';
-import type { IGeminiExecutionClient } from './executionClients.js';
+import path from "node:path";
+import type {
+  BrowserRunOptions,
+  BrowserRunResult,
+  BrowserLogger,
+  CookieParam,
+} from "../browser/types.js";
+import { getCookies } from "@steipete/sweet-cookie";
+import { runProviderDomFlow } from "../browser/providerDomFlow.js";
+import { geminiDeepThinkDomProvider } from "../browser/providers/index.js";
+import { delay } from "../browser/utils.js";
+import { runGeminiWebWithFallback, saveFirstGeminiImageFromOutput } from "./client.js";
+import type { GeminiWebModelId } from "./client.js";
+import type { GeminiWebOptions, GeminiWebResponse } from "./types.js";
+import { runGeminiDeepResearchBrowser } from "./deepResearchExecutor.js";
+import { openGeminiBrowserSession } from "./browserSessionManager.js";
+import { selectGeminiExecutionMode } from "./executionMode.js";
+import type { IGeminiExecutionClient } from "./executionClients.js";
 
 const GEMINI_COOKIE_NAMES = [
   "__Secure-1PSID",
@@ -56,13 +61,14 @@ function resolveGeminiWebModel(
   log?: BrowserLogger,
 ): GeminiWebModelId {
   const desired = typeof desiredModel === "string" ? desiredModel.trim() : "";
-  if (!desired) return "gemini-3-pro";
+  if (!desired) return "gemini-3.1-pro";
   const normalized = desired.toLowerCase().replace(/[_\s]+/g, "-");
 
   switch (normalized) {
+    case "gemini-3.1-pro":
     case "gemini-3-pro":
     case "gemini-3.0-pro":
-      return "gemini-3-pro";
+      return "gemini-3.1-pro";
     case "gemini-3-deep-think":
     case "gemini-3-pro-deep-think":
     case "gemini-3-pro-deepthink":
@@ -74,10 +80,10 @@ function resolveGeminiWebModel(
     default:
       if (normalized.startsWith("gemini-") || normalized.includes("gemini")) {
         log?.(
-          `[gemini-web] Unsupported Gemini web model "${desired}". Falling back to gemini-3-pro.`,
+          `[gemini-web] Unsupported Gemini web model "${desired}". Falling back to gemini-3.1-pro.`,
         );
       }
-      return "gemini-3-pro";
+      return "gemini-3.1-pro";
   }
 }
 

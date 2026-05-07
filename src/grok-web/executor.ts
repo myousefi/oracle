@@ -1,10 +1,16 @@
-import { mkdtemp, rm, mkdir } from 'node:fs/promises';
-import path from 'node:path';
-import os from 'node:os';
-import type { BrowserRunOptions, BrowserRunResult, BrowserLogger, BrowserAttachment, ChromeClient } from '../browser/types.js';
-import { BrowserAutomationError } from '../oracle/errors.js';
-import { resolveBrowserConfig } from '../browser/config.js';
-import { DEFAULT_ORACLE_BROWSER_PROFILE_DIR } from '../browser/profileDefaults.js';
+import { mkdtemp, rm, mkdir } from "node:fs/promises";
+import path from "node:path";
+import os from "node:os";
+import type {
+  BrowserRunOptions,
+  BrowserRunResult,
+  BrowserLogger,
+  BrowserAttachment,
+  ChromeClient,
+} from "../browser/types.js";
+import { BrowserAutomationError } from "../oracle/errors.js";
+import { resolveBrowserConfig } from "../browser/config.js";
+import { DEFAULT_ORACLE_BROWSER_PROFILE_DIR } from "../browser/profileDefaults.js";
 import {
   launchChrome,
   registerTerminationHooks,
@@ -13,12 +19,19 @@ import {
   connectToRemoteChrome,
   closeRemoteChromeTarget,
   closeTab,
-} from '../browser/chromeLifecycle.js';
-import { syncCookies } from '../browser/cookies.js';
-import { delay, estimateTokenCount } from '../browser/utils.js';
-import { installJavaScriptDialogAutoDismissal, ensureNotBlocked } from '../browser/actions/navigation.js';
-import { uploadAttachmentFile, waitForAttachmentCompletion, clearComposerAttachments } from '../browser/actions/attachments.js';
-import { uploadAttachmentViaDataTransfer } from '../browser/actions/remoteFileTransfer.js';
+} from "../browser/chromeLifecycle.js";
+import { syncCookies } from "../browser/cookies.js";
+import { delay, estimateTokenCount } from "../browser/utils.js";
+import {
+  installJavaScriptDialogAutoDismissal,
+  ensureNotBlocked,
+} from "../browser/actions/navigation.js";
+import {
+  uploadAttachmentFile,
+  waitForAttachmentCompletion,
+  clearComposerAttachments,
+} from "../browser/actions/attachments.js";
+import { uploadAttachmentViaDataTransfer } from "../browser/actions/remoteFileTransfer.js";
 import {
   cleanupStaleProfileState,
   readChromePid,
@@ -27,21 +40,22 @@ import {
   verifyDevToolsReachable,
   writeChromePid,
   writeDevToolsActivePort,
-} from '../browser/profileState.js';
-import type { LaunchedChrome } from 'chrome-launcher';
+} from "../browser/profileState.js";
+import type { LaunchedChrome } from "chrome-launcher";
 
 export interface GrokWebOptions {
   baseUrl?: string | null;
 }
 
-const DEFAULT_GROK_URL = 'https://grok.com/';
+const DEFAULT_GROK_URL = "https://grok.com/";
 const GROK_COMPOSER_SELECTOR = 'div.tiptap.ProseMirror[contenteditable="true"]';
 const GROK_SUBMIT_SELECTOR = 'form button[type="submit"][aria-label="Submit"]';
 const GROK_RESPONSE_SELECTOR = 'div[id^="response-"]';
 const GROK_PROFILE_BUTTON = 'button[aria-label="pfp"]';
-const GROK_MODEL_TRIGGER_SELECTOR = 'button#model-select-trigger, button[aria-label="Model select"]';
+const GROK_MODEL_TRIGGER_SELECTOR =
+  'button#model-select-trigger, button[aria-label="Model select"]';
 
-const CHATGPT_HOSTS = ['chatgpt.com', 'chat.openai.com', 'atlas.openai.com'];
+const CHATGPT_HOSTS = ["chatgpt.com", "chat.openai.com", "atlas.openai.com"];
 
 function resolveGrokUrl(options: GrokWebOptions): string {
   const fromOptions = options.baseUrl?.trim();
@@ -51,10 +65,7 @@ function resolveGrokUrl(options: GrokWebOptions): string {
   return DEFAULT_GROK_URL;
 }
 
-function resolveGrokTargetUrl(
-  candidate: string | null | undefined,
-  fallback: string,
-): string {
+function resolveGrokTargetUrl(candidate: string | null | undefined, fallback: string): string {
   const trimmed = candidate?.trim();
   if (!trimmed) return fallback;
   const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
@@ -71,17 +82,17 @@ function resolveGrokTargetUrl(
 }
 
 function isWsl(): boolean {
-  if (process.platform !== 'linux') return false;
+  if (process.platform !== "linux") return false;
   if (process.env.WSL_DISTRO_NAME) return true;
-  return os.release().toLowerCase().includes('microsoft');
+  return os.release().toLowerCase().includes("microsoft");
 }
 
 async function resolveUserDataBaseDir(): Promise<string> {
   if (isWsl()) {
     const candidates = [
-      '/mnt/c/Users/Public/AppData/Local/Temp',
-      '/mnt/c/Temp',
-      '/mnt/c/Windows/Temp',
+      "/mnt/c/Users/Public/AppData/Local/Temp",
+      "/mnt/c/Temp",
+      "/mnt/c/Windows/Temp",
     ];
     for (const candidate of candidates) {
       try {
@@ -95,19 +106,26 @@ async function resolveUserDataBaseDir(): Promise<string> {
   return os.tmpdir();
 }
 
-async function maybeReuseRunningChrome(userDataDir: string, logger: BrowserLogger): Promise<LaunchedChrome | null> {
+async function maybeReuseRunningChrome(
+  userDataDir: string,
+  logger: BrowserLogger,
+): Promise<LaunchedChrome | null> {
   const port = await readDevToolsPort(userDataDir);
   if (!port) return null;
 
   const probe = await verifyDevToolsReachable({ port });
   if (!probe.ok) {
-    logger(`DevToolsActivePort found for ${userDataDir} but unreachable (${probe.error}); launching new Chrome.`);
-    await cleanupStaleProfileState(userDataDir, logger, { lockRemovalMode: 'if_oracle_pid_dead' });
+    logger(
+      `DevToolsActivePort found for ${userDataDir} but unreachable (${probe.error}); launching new Chrome.`,
+    );
+    await cleanupStaleProfileState(userDataDir, logger, { lockRemovalMode: "if_oracle_pid_dead" });
     return null;
   }
 
   const pid = await readChromePid(userDataDir);
-  logger(`Found running Chrome for ${userDataDir}; reusing (DevTools port ${port}${pid ? `, pid ${pid}` : ''})`);
+  logger(
+    `Found running Chrome for ${userDataDir}; reusing (DevTools port ${port}${pid ? `, pid ${pid}` : ""})`,
+  );
   return {
     port,
     pid: pid ?? undefined,
@@ -116,25 +134,28 @@ async function maybeReuseRunningChrome(userDataDir: string, logger: BrowserLogge
   } as unknown as LaunchedChrome;
 }
 
-async function waitForDocumentReady(Runtime: ChromeClient['Runtime'], timeoutMs: number): Promise<void> {
+async function waitForDocumentReady(
+  Runtime: ChromeClient["Runtime"],
+  timeoutMs: number,
+): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const state = await Runtime.evaluate({
-      expression: 'document.readyState',
+      expression: "document.readyState",
       returnByValue: true,
     }).catch(() => null);
     const value = state?.result?.value as string | undefined;
-    if (value === 'complete' || value === 'interactive') {
+    if (value === "complete" || value === "interactive") {
       return;
     }
     await delay(200);
   }
-  throw new Error('Timed out waiting for document readiness.');
+  throw new Error("Timed out waiting for document readiness.");
 }
 
 async function navigateToGrok(
-  Page: ChromeClient['Page'],
-  Runtime: ChromeClient['Runtime'],
+  Page: ChromeClient["Page"],
+  Runtime: ChromeClient["Runtime"],
   url: string,
   logger: BrowserLogger,
 ): Promise<void> {
@@ -143,7 +164,10 @@ async function navigateToGrok(
   await waitForDocumentReady(Runtime, 45_000);
 }
 
-async function ensureGrokLoggedIn(Runtime: ChromeClient['Runtime'], logger: BrowserLogger): Promise<void> {
+async function ensureGrokLoggedIn(
+  Runtime: ChromeClient["Runtime"],
+  logger: BrowserLogger,
+): Promise<void> {
   const probe = await Runtime.evaluate({
     expression: `(() => {
       const href = location.href || '';
@@ -177,28 +201,29 @@ async function ensureGrokLoggedIn(Runtime: ChromeClient['Runtime'], logger: Brow
     hasComposer?: boolean;
   } | null;
 
-  const href = value?.href ?? '';
+  const href = value?.href ?? "";
   const onLoginPage = /accounts\.x\.ai|x\.com\/i\/flow\/login|sign-in|oauth2/i.test(href);
-  const loggedOut = onLoginPage || ((value?.signInLink || value?.loginButton) && !value?.hasProfile);
+  const loggedOut =
+    onLoginPage || ((value?.signInLink || value?.loginButton) && !value?.hasProfile);
 
   if (loggedOut) {
-    logger('Grok login not detected; browser session appears logged out.');
+    logger("Grok login not detected; browser session appears logged out.");
     throw new BrowserAutomationError(
-      'Grok login required. Sign into grok.com (or accounts.x.ai) in the opened Chrome window, then retry.',
+      "Grok login required. Sign into grok.com (or accounts.x.ai) in the opened Chrome window, then retry.",
       {
-        stage: 'grok-login',
+        stage: "grok-login",
         url: href || undefined,
       },
     );
   }
 
   if (!value?.hasComposer) {
-    logger('Grok composer not yet available after login check; waiting for composer readiness.');
+    logger("Grok composer not yet available after login check; waiting for composer readiness.");
   }
 }
 
 async function waitForComposerReady(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   timeoutMs: number,
   logger: BrowserLogger,
 ): Promise<void> {
@@ -225,66 +250,74 @@ async function waitForComposerReady(
       returnByValue: true,
     }).catch(() => null);
 
-    const value = result?.result?.value as { composerReady?: boolean; submitReady?: boolean } | undefined;
+    const value = result?.result?.value as
+      | { composerReady?: boolean; submitReady?: boolean }
+      | undefined;
     if (value?.composerReady) {
       if (!value.submitReady) {
         // Submit button sometimes appears after composer; allow short extra wait.
         await delay(200);
       }
-      logger('Grok composer ready');
+      logger("Grok composer ready");
       return;
     }
     await delay(250);
   }
 
-  throw new BrowserAutomationError('Timed out waiting for Grok composer.', {
-    stage: 'grok-composer',
+  throw new BrowserAutomationError("Timed out waiting for Grok composer.", {
+    stage: "grok-composer",
   });
 }
 
 function normalizeModelLabel(input: string): string {
-  return input.toLowerCase().replace(/\s+/g, ' ').trim();
+  return input.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 function resolveGrokModelLabel(input: string): string {
   const normalized = normalizeModelLabel(input);
-  if (!normalized) return '';
-  if (normalized === 'auto' || normalized === 'auto choose' || normalized.includes('auto')) {
-    return 'auto';
-  }
-  if (normalized === 'fast' || normalized.includes('fast')) return 'fast';
-  if (normalized.includes('heavy') || normalized.includes('team')) return 'heavy';
-  if (
-    normalized === 'grok-4.3' ||
-    normalized === 'grok 4.3' ||
-    normalized === '4.3' ||
-    normalized.includes('4.3') ||
-    normalized.includes('beta') ||
-    normalized.includes('early access')
-  ) {
-    return 'grok 4.3 (beta)';
+  if (!normalized) return "";
+  if (normalized === "auto" || normalized === "auto choose" || normalized.includes("auto")) {
+    return "auto";
   }
   if (
-    normalized === 'grok' ||
-    normalized === 'grok-4.20' ||
-    normalized === 'grok 4.20' ||
-    normalized === '4.20' ||
-    normalized.includes('4.20') ||
-    normalized === 'thinking' ||
-    normalized.includes('expert')
+    normalized === "fast" ||
+    normalized.includes("fast") ||
+    normalized.includes("4.1") ||
+    normalized.includes("4-1")
+  )
+    return "fast";
+  if (
+    normalized.includes("heavy") ||
+    normalized.includes("team") ||
+    normalized.includes("multi") ||
+    normalized.includes("4.20") ||
+    normalized.includes("4-20")
   ) {
-    return 'expert';
+    return "heavy";
+  }
+  if (
+    normalized === "grok" ||
+    normalized === "grok-4.3" ||
+    normalized === "grok 4.3" ||
+    normalized === "4.3" ||
+    normalized.includes("4.3") ||
+    normalized.includes("beta") ||
+    normalized.includes("early access") ||
+    normalized === "thinking" ||
+    normalized.includes("expert")
+  ) {
+    return "expert";
   }
   return normalized;
 }
 
 async function selectGrokModel(
-  Runtime: ChromeClient['Runtime'],
-  Input: ChromeClient['Input'],
+  Runtime: ChromeClient["Runtime"],
+  Input: ChromeClient["Input"],
   desiredModel: string | null | undefined,
   logger: BrowserLogger,
 ): Promise<void> {
-  const desiredRaw = desiredModel?.trim() ?? '';
+  const desiredRaw = desiredModel?.trim() ?? "";
   if (!desiredRaw) return;
   const desired = resolveGrokModelLabel(desiredRaw);
 
@@ -302,13 +335,25 @@ async function selectGrokModel(
       returnByValue: true,
     }).catch(() => null);
     const value = locate?.result?.value as { ok?: boolean; x?: number; y?: number } | undefined;
-    if (value?.ok && typeof value.x === 'number' && typeof value.y === 'number') {
+    if (value?.ok && typeof value.x === "number" && typeof value.y === "number") {
       const x = value.x;
       const y = value.y;
       try {
-        await Input.dispatchMouseEvent({ type: 'mouseMoved', x, y });
-        await Input.dispatchMouseEvent({ type: 'mousePressed', x, y, button: 'left', clickCount: 1 });
-        await Input.dispatchMouseEvent({ type: 'mouseReleased', x, y, button: 'left', clickCount: 1 });
+        await Input.dispatchMouseEvent({ type: "mouseMoved", x, y });
+        await Input.dispatchMouseEvent({
+          type: "mousePressed",
+          x,
+          y,
+          button: "left",
+          clickCount: 1,
+        });
+        await Input.dispatchMouseEvent({
+          type: "mouseReleased",
+          x,
+          y,
+          button: "left",
+          clickCount: 1,
+        });
         return true;
       } catch {
         // fall through to synthetic click
@@ -337,7 +382,7 @@ async function selectGrokModel(
       expression: `(() => {
         const normalize = (value) => String(value || '').toLowerCase().replace(/\\s+/g, ' ').trim();
         const desired = ${JSON.stringify(desired)};
-        const items = Array.from(document.querySelectorAll('[role=\"menuitem\"],[role=\"menuitemradio\"]'));
+        const items = Array.from(document.querySelectorAll('[role="menuitem"],[role="menuitemradio"]'));
         const labels = items.map((item) => normalize(item.textContent || ''));
         // Prefer exact/prefix matches so "expert" doesn't match "auto ... expert".
         let matchIndex = labels.findIndex((label) => label && label === desired);
@@ -364,31 +409,43 @@ async function selectGrokModel(
       | { matched?: boolean; label?: string; labels?: string[]; x?: number; y?: number }
       | undefined;
     if (value?.matched) {
-      if (typeof value.x === 'number' && typeof value.y === 'number') {
-        await Input.dispatchMouseEvent({ type: 'mouseMoved', x: value.x, y: value.y }).catch(() => undefined);
-        await Input
-          .dispatchMouseEvent({ type: 'mousePressed', x: value.x, y: value.y, button: 'left', clickCount: 1 })
-          .catch(() => undefined);
-        await Input
-          .dispatchMouseEvent({ type: 'mouseReleased', x: value.x, y: value.y, button: 'left', clickCount: 1 })
-          .catch(() => undefined);
+      if (typeof value.x === "number" && typeof value.y === "number") {
+        await Input.dispatchMouseEvent({ type: "mouseMoved", x: value.x, y: value.y }).catch(
+          () => undefined,
+        );
+        await Input.dispatchMouseEvent({
+          type: "mousePressed",
+          x: value.x,
+          y: value.y,
+          button: "left",
+          clickCount: 1,
+        }).catch(() => undefined);
+        await Input.dispatchMouseEvent({
+          type: "mouseReleased",
+          x: value.x,
+          y: value.y,
+          button: "left",
+          clickCount: 1,
+        }).catch(() => undefined);
       }
       logger(`[grok-web] Selected Grok model: ${value.label ?? desired}`);
       return;
     }
     if (value?.labels && value.labels.length > 0) {
-      logger(`[grok-web] Grok model "${desiredRaw}" not found. Available: ${value.labels.join(', ')}`);
+      logger(
+        `[grok-web] Grok model "${desiredRaw}" not found. Available: ${value.labels.join(", ")}`,
+      );
       break;
     }
     await delay(200);
   }
 
   await Runtime.evaluate({
-    expression: 'document.body.click()',
+    expression: "document.body.click()",
   }).catch(() => undefined);
 }
 
-async function clearComposerText(Runtime: ChromeClient['Runtime']): Promise<void> {
+async function clearComposerText(Runtime: ChromeClient["Runtime"]): Promise<void> {
   await Runtime.evaluate({
     expression: `(() => {
       const node = document.querySelector(${JSON.stringify(GROK_COMPOSER_SELECTOR)});
@@ -401,8 +458,8 @@ async function clearComposerText(Runtime: ChromeClient['Runtime']): Promise<void
 }
 
 async function setComposerText(
-  Runtime: ChromeClient['Runtime'],
-  Input: ChromeClient['Input'],
+  Runtime: ChromeClient["Runtime"],
+  Input: ChromeClient["Input"],
   prompt: string,
   logger: BrowserLogger,
 ): Promise<void> {
@@ -425,10 +482,21 @@ async function setComposerText(
     returnByValue: true,
   });
   if (!focused?.result?.value?.focused) {
-    throw new Error('Failed to focus Grok composer.');
+    throw new Error("Failed to focus Grok composer.");
   }
 
-  await Input.insertText({ text: prompt });
+  // Learned: Input.insertText treats \n as Enter in Grok's contenteditable composer,
+  // submitting the form early and silently truncating multi-line prompts.
+  // Fix: execCommand('insertText') inserts text literally into the focused element without
+  // triggering keyboard event side effects, so newlines become soft breaks, not form submits.
+  const inserted = await Runtime.evaluate({
+    expression: `document.execCommand('insertText', false, ${JSON.stringify(prompt)})`,
+    returnByValue: true,
+  });
+  if (!inserted?.result?.value) {
+    // Fallback: \r is treated as soft line break rather than Enter/submit in ProseMirror
+    await Input.insertText({ text: prompt.replace(/\n/g, "\r") });
+  }
   await delay(200);
 
   const verify = await Runtime.evaluate({
@@ -438,9 +506,9 @@ async function setComposerText(
     })()`,
     returnByValue: true,
   });
-  const current = String(verify?.result?.value ?? '');
+  const current = String(verify?.result?.value ?? "");
   if (!current.trim()) {
-    logger('[grok-web] composer empty after insertText; forcing textContent');
+    logger("[grok-web] composer empty after insertText; forcing textContent");
     await Runtime.evaluate({
       expression: `(() => {
         const node = document.querySelector(${JSON.stringify(GROK_COMPOSER_SELECTOR)});
@@ -456,9 +524,9 @@ async function setComposerText(
   if (promptLength >= 50_000) {
     const observedLength = current.trim().length;
     if (observedLength > 0 && observedLength < promptLength - 2_000) {
-      throw new BrowserAutomationError('Prompt appears truncated in the Grok composer.', {
-        stage: 'grok-submit',
-        code: 'prompt-too-large',
+      throw new BrowserAutomationError("Prompt appears truncated in the Grok composer.", {
+        stage: "grok-submit",
+        code: "prompt-too-large",
         promptLength,
         observedLength,
       });
@@ -467,8 +535,8 @@ async function setComposerText(
 }
 
 async function submitPrompt(
-  Runtime: ChromeClient['Runtime'],
-  Input: ChromeClient['Input'],
+  Runtime: ChromeClient["Runtime"],
+  Input: ChromeClient["Input"],
   prompt: string,
   logger: BrowserLogger,
 ): Promise<void> {
@@ -486,10 +554,22 @@ async function submitPrompt(
   });
 
   if (!clicked?.result?.value) {
-    logger('[grok-web] submit button not found; falling back to Enter key');
-    await Input.dispatchKeyEvent({ type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 });
-    await Input.dispatchKeyEvent({ type: 'char', text: '\r' });
-    await Input.dispatchKeyEvent({ type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 });
+    logger("[grok-web] submit button not found; falling back to Enter key");
+    await Input.dispatchKeyEvent({
+      type: "keyDown",
+      key: "Enter",
+      code: "Enter",
+      windowsVirtualKeyCode: 13,
+      nativeVirtualKeyCode: 13,
+    });
+    await Input.dispatchKeyEvent({ type: "char", text: "\r" });
+    await Input.dispatchKeyEvent({
+      type: "keyUp",
+      key: "Enter",
+      code: "Enter",
+      windowsVirtualKeyCode: 13,
+      nativeVirtualKeyCode: 13,
+    });
   }
 
   // Wait for composer to clear (best-effort)
@@ -502,14 +582,18 @@ async function submitPrompt(
       })()`,
       returnByValue: true,
     });
-    const text = String(value?.result?.value ?? '');
+    const text = String(value?.result?.value ?? "");
     if (!text) return;
     await delay(200);
   }
 }
 
 async function uploadAttachments(
-  deps: { Runtime: ChromeClient['Runtime']; Input: ChromeClient['Input']; DOM?: ChromeClient['DOM'] },
+  deps: {
+    Runtime: ChromeClient["Runtime"];
+    Input: ChromeClient["Input"];
+    DOM?: ChromeClient["DOM"];
+  },
   attachments: BrowserAttachment[],
   logger: BrowserLogger,
   remote: boolean,
@@ -517,7 +601,7 @@ async function uploadAttachments(
 ): Promise<void> {
   if (attachments.length === 0) return;
   if (!deps.DOM) {
-    throw new Error('Chrome DOM domain unavailable while uploading attachments.');
+    throw new Error("Chrome DOM domain unavailable while uploading attachments.");
   }
 
   await clearComposerAttachments(deps.Runtime, 5_000, logger);
@@ -526,11 +610,20 @@ async function uploadAttachments(
     const attachment = attachments[index];
     logger(`Uploading attachment: ${attachment.displayPath}`);
     if (remote) {
-      await uploadAttachmentViaDataTransfer({ runtime: deps.Runtime, dom: deps.DOM }, attachment, logger);
+      await uploadAttachmentViaDataTransfer(
+        { runtime: deps.Runtime, dom: deps.DOM },
+        attachment,
+        logger,
+      );
     } else {
-      await uploadAttachmentFile({ runtime: deps.Runtime, dom: deps.DOM, input: deps.Input }, attachment, logger, {
-        expectedCount: index + 1,
-      });
+      await uploadAttachmentFile(
+        { runtime: deps.Runtime, dom: deps.DOM, input: deps.Input },
+        attachment,
+        logger,
+        {
+          expectedCount: index + 1,
+        },
+      );
     }
     await delay(300);
   }
@@ -540,18 +633,20 @@ async function uploadAttachments(
   const waitBudget = Math.max(baseTimeout, 45_000) + (attachments.length - 1) * 20_000;
   try {
     await waitForAttachmentCompletion(deps.Runtime, waitBudget, attachmentNames, logger);
-    logger('All attachments uploaded');
+    logger("All attachments uploaded");
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (/Attachments did not finish uploading before timeout/i.test(message)) {
-      logger(`[grok-web] Attachment upload timed out after ${Math.round(waitBudget / 1000)}s; continuing.`);
+      logger(
+        `[grok-web] Attachment upload timed out after ${Math.round(waitBudget / 1000)}s; continuing.`,
+      );
       return;
     }
     throw error;
   }
 }
 
-async function getAssistantSnapshot(Runtime: ChromeClient['Runtime']) {
+async function getAssistantSnapshot(Runtime: ChromeClient["Runtime"]) {
   const result = await Runtime.evaluate({
     expression: `(() => {
       const responses = Array.from(document.querySelectorAll(${JSON.stringify(GROK_RESPONSE_SELECTOR)}));
@@ -570,25 +665,27 @@ async function getAssistantSnapshot(Runtime: ChromeClient['Runtime']) {
     })()`,
     returnByValue: true,
   });
-  return result?.result?.value as { id: string | null; text: string; html: string; hasRegenerate: boolean } | undefined;
+  return result?.result?.value as
+    | { id: string | null; text: string; html: string; hasRegenerate: boolean }
+    | undefined;
 }
 
 async function waitForAssistantResponse(
-  Runtime: ChromeClient['Runtime'],
+  Runtime: ChromeClient["Runtime"],
   logger: BrowserLogger,
   timeoutMs: number,
   baseline?: { id: string | null; text: string },
 ): Promise<{ text: string; html: string }> {
   const deadline = Date.now() + timeoutMs;
   const baseId = baseline?.id ?? null;
-  const baseText = baseline?.text ?? '';
-  let lastText = '';
+  const baseText = baseline?.text ?? "";
+  let lastText = "";
   let stableForMs = 0;
   const interval = 500;
 
   while (Date.now() < deadline) {
     const snapshot = await getAssistantSnapshot(Runtime);
-    const text = snapshot?.text?.trim?.() ?? '';
+    const text = snapshot?.text?.trim?.() ?? "";
     const id = snapshot?.id ?? null;
     const isNew = text && (id !== baseId || text !== baseText);
     if (isNew) {
@@ -600,14 +697,16 @@ async function waitForAssistantResponse(
       }
       const done = stableForMs >= 2000 && (snapshot?.hasRegenerate || stableForMs >= 4000);
       if (done) {
-        return { text, html: snapshot?.html ?? '' };
+        return { text, html: snapshot?.html ?? "" };
       }
     }
     await delay(interval);
   }
 
-  logger('[grok-web] Timed out waiting for assistant response');
-  throw new BrowserAutomationError('Timed out waiting for Grok response.', { stage: 'grok-response' });
+  logger("[grok-web] Timed out waiting for assistant response");
+  throw new BrowserAutomationError("Timed out waiting for Grok response.", {
+    stage: "grok-response",
+  });
 }
 
 export function createGrokWebExecutor(
@@ -616,7 +715,7 @@ export function createGrokWebExecutor(
   return async (runOptions: BrowserRunOptions): Promise<BrowserRunResult> => {
     const promptText = runOptions.prompt?.trim();
     if (!promptText) {
-      throw new Error('Prompt text is required when using Grok browser mode.');
+      throw new Error("Prompt text is required when using Grok browser mode.");
     }
 
     const attachments: BrowserAttachment[] = runOptions.attachments ?? [];
@@ -631,7 +730,7 @@ export function createGrokWebExecutor(
       ...(runOptions.config ?? {}),
       url,
       chatgptUrl: url,
-      modelStrategy: 'ignore',
+      modelStrategy: "ignore",
     });
     const targetUrl = config.url;
 
@@ -643,7 +742,7 @@ export function createGrokWebExecutor(
     let removeTerminationHooks: (() => void) | null = null;
     let removeDialogHandler: (() => void) | null = null;
     let connectionClosedUnexpectedly = false;
-    let runStatus: 'attempted' | 'complete' = 'attempted';
+    let runStatus: "attempted" | "complete" = "attempted";
 
     const emitRuntimeHint = async (host?: string, port?: number, targetId?: string) => {
       if (!runtimeHintCb || !port) return;
@@ -670,7 +769,7 @@ export function createGrokWebExecutor(
       : DEFAULT_ORACLE_BROWSER_PROFILE_DIR;
     const userDataDir = manualLogin
       ? manualProfileDir
-      : await mkdtemp(path.join(await resolveUserDataBaseDir(), 'oracle-grok-'));
+      : await mkdtemp(path.join(await resolveUserDataBaseDir(), "oracle-grok-"));
 
     if (manualLogin) {
       await mkdir(userDataDir, { recursive: true });
@@ -681,11 +780,13 @@ export function createGrokWebExecutor(
 
     const effectiveKeepBrowser = Boolean(config.keepBrowser);
     const remoteChromeConfig = config.remoteChrome;
-    const chromeHost = remoteChromeConfig?.host ?? '127.0.0.1';
+    const chromeHost = remoteChromeConfig?.host ?? "127.0.0.1";
 
     try {
       if (remoteChromeConfig) {
-        logger(`Connecting to remote Chrome at ${remoteChromeConfig.host}:${remoteChromeConfig.port}`);
+        logger(
+          `Connecting to remote Chrome at ${remoteChromeConfig.host}:${remoteChromeConfig.port}`,
+        );
         const connection = await connectToRemoteChrome(
           remoteChromeConfig.host,
           remoteChromeConfig.port,
@@ -694,17 +795,18 @@ export function createGrokWebExecutor(
         );
         client = connection.client;
         lastTargetId = connection.targetId ?? undefined;
-        client.on('disconnect', () => {
+        client.on("disconnect", () => {
           connectionClosedUnexpectedly = true;
         });
         await emitRuntimeHint(remoteChromeConfig.host, remoteChromeConfig.port, lastTargetId);
       } else {
-        const reusedChrome = manualLogin ? await maybeReuseRunningChrome(userDataDir, logger) : null;
+        const reusedChrome = manualLogin
+          ? await maybeReuseRunningChrome(userDataDir, logger)
+          : null;
         chrome =
-          reusedChrome ??
-          (await launchChrome({ ...config, url: targetUrl }, userDataDir, logger));
+          reusedChrome ?? (await launchChrome({ ...config, url: targetUrl }, userDataDir, logger));
 
-        const host = (chrome as unknown as { host?: string }).host ?? '127.0.0.1';
+        const host = (chrome as unknown as { host?: string }).host ?? "127.0.0.1";
         if (config.hideWindow) {
           await hideChromeWindow(chrome, logger);
         }
@@ -714,11 +816,17 @@ export function createGrokWebExecutor(
             await writeChromePid(userDataDir, chrome.pid);
           }
         }
-        removeTerminationHooks = registerTerminationHooks(chrome, userDataDir, effectiveKeepBrowser, logger, {
-          isInFlight: () => runStatus !== 'complete',
-          emitRuntimeHint: async () => emitRuntimeHint(host, chrome?.port, lastTargetId),
-          preserveUserDataDir: manualLogin,
-        });
+        removeTerminationHooks = registerTerminationHooks(
+          chrome,
+          userDataDir,
+          effectiveKeepBrowser,
+          logger,
+          {
+            isInFlight: () => runStatus !== "complete",
+            emitRuntimeHint: async () => emitRuntimeHint(host, chrome?.port, lastTargetId),
+            preserveUserDataDir: manualLogin,
+          },
+        );
 
         const connection = await connectWithNewTab(chrome.port, logger, undefined, host);
         client = connection.client;
@@ -726,12 +834,12 @@ export function createGrokWebExecutor(
       }
 
       if (!client) {
-        throw new Error('Failed to connect to Chrome for Grok browser session.');
+        throw new Error("Failed to connect to Chrome for Grok browser session.");
       }
 
       const { Network, Page, Runtime, Input, DOM } = client;
       const enablers = [Network.enable({}), Page.enable(), Runtime.enable()];
-      if (DOM && typeof DOM.enable === 'function') {
+      if (DOM && typeof DOM.enable === "function") {
         enablers.push(DOM.enable());
       }
       await Promise.all(enablers);
@@ -742,7 +850,8 @@ export function createGrokWebExecutor(
       }
 
       if (!remoteChromeConfig) {
-        const cookieSyncEnabled = config.cookieSync && (!manualLogin || config.manualLoginCookieSync);
+        const cookieSyncEnabled =
+          config.cookieSync && (!manualLogin || config.manualLoginCookieSync);
         if (cookieSyncEnabled) {
           const applied = await syncCookies(Network, targetUrl, config.chromeProfile, logger, {
             allowErrors: config.allowCookieErrors ?? false,
@@ -750,19 +859,30 @@ export function createGrokWebExecutor(
             inlineCookies: config.inlineCookies ?? undefined,
             cookiePath: config.chromeCookiePath ?? undefined,
             waitMs: config.cookieSyncWaitMs ?? 0,
-            origins: ['https://grok.com', 'https://x.com', 'https://twitter.com', 'https://accounts.x.ai'],
+            origins: [
+              "https://grok.com",
+              "https://x.com",
+              "https://twitter.com",
+              "https://accounts.x.ai",
+            ],
           });
           if (config.inlineCookies && applied === 0) {
-            throw new Error('No inline cookies were applied; aborting before navigation.');
+            throw new Error("No inline cookies were applied; aborting before navigation.");
           }
-          logger(applied > 0 ? `Applied ${applied} cookies` : 'No cookies applied; continuing without session reuse');
+          logger(
+            applied > 0
+              ? `Applied ${applied} cookies`
+              : "No cookies applied; continuing without session reuse",
+          );
         } else if (manualLogin) {
-          logger('Skipping cookie sync (--browser-manual-login enabled); reuse the opened profile after signing in.');
+          logger(
+            "Skipping cookie sync (--browser-manual-login enabled); reuse the opened profile after signing in.",
+          );
         } else {
-          logger('Skipping cookie sync (--browser-no-cookie-sync)');
+          logger("Skipping cookie sync (--browser-no-cookie-sync)");
         }
       } else {
-        logger('Skipping cookie sync for remote Chrome (using existing session)');
+        logger("Skipping cookie sync for remote Chrome (using existing session)");
       }
 
       await navigateToGrok(Page, Runtime, targetUrl, logger);
@@ -772,8 +892,11 @@ export function createGrokWebExecutor(
       await selectGrokModel(Runtime, Input, config.desiredModel ?? undefined, logger);
 
       const readLocation = async () => {
-        const value = await Runtime.evaluate({ expression: 'location.href', returnByValue: true }).catch(() => null);
-        const href = typeof value?.result?.value === 'string' ? value.result.value : undefined;
+        const value = await Runtime.evaluate({
+          expression: "location.href",
+          returnByValue: true,
+        }).catch(() => null);
+        const href = typeof value?.result?.value === "string" ? value.result.value : undefined;
         if (href) lastUrl = href;
       };
       await readLocation();
@@ -799,10 +922,13 @@ export function createGrokWebExecutor(
       } catch (error) {
         const isPromptTooLarge =
           error instanceof BrowserAutomationError &&
-          (error.details as { code?: string } | undefined)?.code === 'prompt-too-large';
+          (error.details as { code?: string } | undefined)?.code === "prompt-too-large";
         if (runOptions.fallbackSubmission && isPromptTooLarge) {
-          logger('[grok-web] Inline prompt too large; retrying with file uploads.');
-          await submitOnce(runOptions.fallbackSubmission.prompt, runOptions.fallbackSubmission.attachments);
+          logger("[grok-web] Inline prompt too large; retrying with file uploads.");
+          await submitOnce(
+            runOptions.fallbackSubmission.prompt,
+            runOptions.fallbackSubmission.attachments,
+          );
         } else {
           throw error;
         }
@@ -816,7 +942,7 @@ export function createGrokWebExecutor(
         baseline ? { id: baseline.id, text: baseline.text } : undefined,
       );
 
-      runStatus = 'complete';
+      runStatus = "complete";
       const answerText = answer.text.trim();
       const answerTokens = estimateTokenCount(answerText);
       const answerMarkdown = answerText;
@@ -846,9 +972,9 @@ export function createGrokWebExecutor(
       if (connectionClosedUnexpectedly) {
         await emitRuntimeHint(chromeHost, remoteChromeConfig?.port ?? chrome?.port, lastTargetId);
         throw new BrowserAutomationError(
-          'Chrome window closed before oracle finished. Please keep it open until completion.',
+          "Chrome window closed before oracle finished. Please keep it open until completion.",
           {
-            stage: 'connection-lost',
+            stage: "connection-lost",
             runtime: {
               chromePid: chrome?.pid,
               chromePort: remoteChromeConfig?.port ?? chrome?.port,
@@ -875,9 +1001,12 @@ export function createGrokWebExecutor(
       if (!remoteChromeConfig && chrome?.port && lastTargetId && !effectiveKeepBrowser) {
         await closeTab(chrome.port, lastTargetId, logger, chromeHost).catch(() => undefined);
       } else if (remoteChromeConfig && lastTargetId) {
-        await closeRemoteChromeTarget(remoteChromeConfig.host, remoteChromeConfig.port, lastTargetId, logger).catch(
-          () => undefined,
-        );
+        await closeRemoteChromeTarget(
+          remoteChromeConfig.host,
+          remoteChromeConfig.port,
+          lastTargetId,
+          logger,
+        ).catch(() => undefined);
       }
 
       removeDialogHandler?.();
@@ -892,12 +1021,18 @@ export function createGrokWebExecutor(
           }
         }
         if (manualLogin) {
-          const shouldCleanup = await shouldCleanupManualLoginProfileState(userDataDir, logger.verbose ? logger : undefined, {
-            connectionClosedUnexpectedly,
-            host: chromeHost,
-          });
+          const shouldCleanup = await shouldCleanupManualLoginProfileState(
+            userDataDir,
+            logger.verbose ? logger : undefined,
+            {
+              connectionClosedUnexpectedly,
+              host: chromeHost,
+            },
+          );
           if (shouldCleanup) {
-            await cleanupStaleProfileState(userDataDir, logger, { lockRemovalMode: 'never' }).catch(() => undefined);
+            await cleanupStaleProfileState(userDataDir, logger, { lockRemovalMode: "never" }).catch(
+              () => undefined,
+            );
           }
         } else {
           await rm(userDataDir, { recursive: true, force: true }).catch(() => undefined);

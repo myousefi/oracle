@@ -1,14 +1,14 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { z } from 'zod';
-import { getCliVersion } from '../../version.js';
-import { LoggingMessageNotificationParamsSchema } from '@modelcontextprotocol/sdk/types.js';
-import { ensureBrowserAvailable, mapConsultToRunOptions } from '../utils.js';
-import type { BrowserSessionConfig, SessionModelRun } from '../../sessionStore.js';
-import { sessionStore } from '../../sessionStore.js';
-import { resolveRemoteServiceConfig } from '../../remote/remoteServiceConfig.js';
-import { createRemoteBrowserExecutor } from '../../remote/client.js';
-import { createGrokWebExecutor } from '../../grok-web/index.js';
-import type { BrowserSessionRunnerDeps } from '../../browser/sessionRunner.js';
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
+import { getCliVersion } from "../../version.js";
+import { LoggingMessageNotificationParamsSchema } from "@modelcontextprotocol/sdk/types.js";
+import { ensureBrowserAvailable, mapConsultToRunOptions } from "../utils.js";
+import type { BrowserSessionConfig, SessionModelRun } from "../../sessionStore.js";
+import { sessionStore } from "../../sessionStore.js";
+import { resolveRemoteServiceConfig } from "../../remote/remoteServiceConfig.js";
+import { createRemoteBrowserExecutor } from "../../remote/client.js";
+import { createGrokWebExecutor } from "../../grok-web/index.js";
+import type { BrowserSessionRunnerDeps } from "../../browser/sessionRunner.js";
 
 async function readSessionLogTail(sessionId: string, maxBytes: number): Promise<string | null> {
   try {
@@ -21,12 +21,16 @@ async function readSessionLogTail(sessionId: string, maxBytes: number): Promise<
     return null;
   }
 }
-import { performSessionRun } from '../../cli/sessionRunner.js';
-import { CHATGPT_URL } from '../../browser/constants.js';
-import { consultInputSchema } from '../types.js';
-import { loadUserConfig, type UserConfig } from '../../config.js';
-import { resolveNotificationSettings } from '../../cli/notifier.js';
-import { mapModelToBrowserLabel, resolveBrowserModelLabel, resolveGrokBrowserLabel } from '../../cli/browserConfig.js';
+import { performSessionRun } from "../../cli/sessionRunner.js";
+import { CHATGPT_URL } from "../../browser/constants.js";
+import { consultInputSchema } from "../types.js";
+import { loadUserConfig, type UserConfig } from "../../config.js";
+import { resolveNotificationSettings } from "../../cli/notifier.js";
+import {
+  mapModelToBrowserLabel,
+  resolveBrowserModelLabel,
+  resolveGrokBrowserLabel,
+} from "../../cli/browserConfig.js";
 
 // Use raw shapes so the MCP SDK (with its bundled Zod) wraps them and emits valid JSON Schema.
 const consultInputShape = {
@@ -46,16 +50,18 @@ const consultInputShape = {
   models: z
     .array(z.string())
     .optional()
-    .describe('Multi-model runs are not supported in browser mode. Provide a single model.'),
+    .describe("Multi-model runs are not supported in browser mode. Provide a single model."),
   engine: z
-    .enum(['browser'])
+    .enum(["browser"])
     .optional()
-    .describe('Execution engine. Browser mode automates ChatGPT/Grok in Chrome or uses the Gemini web client.'),
+    .describe(
+      "Execution engine. Browser mode automates ChatGPT/Grok in Chrome or uses the Gemini web client.",
+    ),
   browserModelLabel: z
     .string()
     .optional()
     .describe(
-      'Browser-only: explicit ChatGPT UI label to select (overrides model mapping). Example: "GPT-5.4 Thinking".',
+      'Browser-only: explicit ChatGPT UI label to select (overrides model mapping). Example: "GPT-5.5 Thinking".',
     ),
   browserAttachments: z
     .enum(["auto", "never", "always"])
@@ -78,7 +84,7 @@ const consultInputShape = {
   search: z
     .boolean()
     .optional()
-    .describe('Enable/disable the provider search tool (browser mode ignores this).'),
+    .describe("Enable/disable the provider search tool (browser mode ignores this)."),
   slug: z
     .string()
     .optional()
@@ -243,7 +249,7 @@ export function registerConsultTool(server: McpServer): void {
         env: process.env,
       });
       const cwd = process.cwd();
-      const isGrokModel = runOptions.model.startsWith('grok');
+      const isGrokModel = runOptions.model.startsWith("grok");
 
       const resolvedRemote = resolveRemoteServiceConfig({ userConfig, env: process.env });
       const browserGuard = ensureBrowserAvailable(resolvedEngine, {
@@ -257,7 +263,7 @@ export function registerConsultTool(server: McpServer): void {
       }
 
       let browserDeps: BrowserSessionRunnerDeps | undefined;
-      if (resolvedEngine === 'browser' && isGrokModel && resolvedRemote.host) {
+      if (resolvedEngine === "browser" && isGrokModel && resolvedRemote.host) {
         return {
           isError: true,
           content: textContent(
@@ -265,7 +271,7 @@ export function registerConsultTool(server: McpServer): void {
           ),
         };
       }
-      if (resolvedEngine === 'browser' && resolvedRemote.host) {
+      if (resolvedEngine === "browser" && resolvedRemote.host) {
         if (!resolvedRemote.token) {
           return {
             isError: true,
@@ -280,25 +286,27 @@ export function registerConsultTool(server: McpServer): void {
             token: resolvedRemote.token,
           }),
         };
-      } else if (resolvedEngine === 'browser' && isGrokModel) {
+      } else if (resolvedEngine === "browser" && isGrokModel) {
         browserDeps = {
           executeBrowser: createGrokWebExecutor({}),
         };
       }
 
       let browserConfig: BrowserSessionConfig | undefined;
-      if (resolvedEngine === 'browser') {
-        const envProfileDir = (process.env.ORACLE_BROWSER_PROFILE_DIR ?? '').trim();
+      if (resolvedEngine === "browser") {
+        const envProfileDir = (process.env.ORACLE_BROWSER_PROFILE_DIR ?? "").trim();
         const explicitLabel = browserModelLabel?.trim();
         const modelLabelFallback = model?.trim();
-        const isChatGptModel = runOptions.model.startsWith('gpt-') && !runOptions.model.includes('codex');
+        const isChatGptModel =
+          runOptions.model.startsWith("gpt-") && !runOptions.model.includes("codex");
         const grokDerivedLabel = !explicitLabel && model ? resolveGrokBrowserLabel(model) : null;
         const desiredModelLabel = isChatGptModel
           ? mapModelToBrowserLabel(runOptions.model)
           : isGrokModel
             ? explicitLabel || grokDerivedLabel
             : explicitLabel || modelLabelFallback || runOptions.model;
-        const configuredUrl = userConfig.browser?.chatgptUrl ?? userConfig.browser?.url ?? undefined;
+        const configuredUrl =
+          userConfig.browser?.chatgptUrl ?? userConfig.browser?.url ?? undefined;
         const manualLogin = true;
         const keepBrowser = browserKeepBrowser === undefined ? undefined : browserKeepBrowser;
         browserConfig = {

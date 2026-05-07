@@ -231,7 +231,7 @@ export async function attachSession(
             conversationId: result.response?.conversationId ?? runtime?.conversationId,
           },
         },
-        response: { status: 'completed', ...(metadata.response ?? {}), ...(result.response ?? {}) },
+        response: { ...(metadata.response ?? {}), status: "completed", ...(result.response ?? {}) },
         error: undefined,
         transport: undefined,
       });

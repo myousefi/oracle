@@ -53,11 +53,16 @@ describe("Gemini Client", () => {
   });
 
   it("maps 3-pro through resolver", () => {
-    expect(resolveGeminiModelId("gemini-3-pro")).toBe("gemini-3-pro-preview");
+    expect(resolveGeminiModelId("gemini-3-pro")).toBe("gemini-3.1-pro-preview");
   });
 
   it("maps 3.1-pro through resolver", () => {
     expect(resolveGeminiModelId("gemini-3.1-pro")).toBe("gemini-3.1-pro-preview");
+  });
+
+  it("maps current Gemini 3 variants through resolver", () => {
+    expect(resolveGeminiModelId("gemini-3-flash")).toBe("gemini-3-flash-preview");
+    expect(resolveGeminiModelId("gemini-3.1-flash-lite")).toBe("gemini-3.1-flash-lite-preview");
   });
 
   it("adapts create request correctly", async () => {
@@ -78,7 +83,7 @@ describe("Gemini Client", () => {
     mockGenerateContent.mockResolvedValue(mockResponse);
 
     const requestBody: OracleRequestBody = {
-      model: "gemini-3-pro",
+      model: "gemini-3.1-pro",
       instructions: "System prompt",
       input: [
         {
@@ -92,7 +97,7 @@ describe("Gemini Client", () => {
     const result = await client.responses.create(requestBody);
 
     expect(mockGenerateContent).toHaveBeenCalledWith({
-      model: "gemini-3-pro-preview",
+      model: "gemini-3.1-pro-preview",
       contents: [
         {
           role: "user",
