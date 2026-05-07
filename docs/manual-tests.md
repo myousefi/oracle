@@ -35,6 +35,17 @@ Prereqs:
    `pnpm run oracle -- --engine browser --model gemini-3-pro --prompt "add sunglasses" --edit-image /tmp/gemini-gen.jpg --output /tmp/gemini-edit.jpg --wait --verbose`
    - Confirm `/tmp/gemini-edit.jpg` exists.
 
+### ChatGPT image generation
+
+Run this whenever you touch ChatGPT browser composer controls, response capture, or `--generate-images` plumbing.
+
+1. Generate images through ChatGPT's image mode:
+   `pnpm run oracle -- --engine browser --generate-images --aspect-ratio 1:1 --output /tmp/oracle-chatgpt-image.png --prompt "A clean oracle eye icon made of circuit traces" --wait --verbose`
+   - Confirm `/tmp/oracle-chatgpt-image.png` exists and is a real image (`file /tmp/oracle-chatgpt-image.png`).
+   - Confirm Oracle selects the visible ChatGPT aspect-ratio control instead of adding its own prompt prefix/suffix.
+   - ChatGPT may render the selected aspect ratio as part of the user turn; that comes from its own image UI state.
+   - If ChatGPT returns more than one image, confirm numbered sibling files were saved.
+
 ### Multi-Model CLI fan-out
 
 Run this whenever you touch the session store, CLI session views, or TUI wiring for multi-model runs.

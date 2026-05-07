@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- Browser: add ChatGPT UI image generation with `--generate-images`, `--aspect-ratio 1:1|3:4|9:16|4:3|16:9`, and `--output`, saving every generated image into the session/output path while selecting image/aspect controls through the ChatGPT UI.
+
 ## 0.9.0 — 2026-03-08
 
 ### Changed
