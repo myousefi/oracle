@@ -649,7 +649,7 @@ program
   .addOption(
     new Option(
       "--generate-images",
-      "Generate images through ChatGPT browser image mode and save every returned image.",
+      "Use local ChatGPT browser image mode and save returned image(s); attach image files with --file to request edits.",
     ).default(false),
   )
   .addOption(
@@ -664,11 +664,16 @@ program
       "Edit an input image through Gemini web mode; pair with --output for the result path.",
     ),
   )
-  .addOption(new Option("--output <path>", "Image output file or directory."))
+  .addOption(
+    new Option(
+      "--output <path>",
+      "Image output file or directory for ChatGPT --generate-images or Gemini image operations.",
+    ),
+  )
   .addOption(
     new Option(
       "--aspect-ratio <ratio>",
-      "Image aspect ratio for ChatGPT image mode: 1:1, 3:4, 9:16, 4:3, or 16:9.",
+      "Select the ChatGPT image aspect ratio in the browser UI: 1:1, 3:4, 9:16, 4:3, or 16:9.",
     ).argParser(parseImageAspectRatioOption),
   )
   .addOption(
