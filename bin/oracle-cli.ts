@@ -88,6 +88,7 @@ import {
 } from "../src/cli/notifier.js";
 import { loadUserConfig, type UserConfig } from "../src/config.js";
 import { applyBrowserDefaultsFromConfig } from "../src/cli/browserDefaults.js";
+import { applyImageGenerationDefaults } from "../src/cli/imageDefaults.js";
 import { resolveGrokBrowserLabel } from "../src/cli/browserConfig.js";
 import { shouldBlockDuplicatePrompt } from "../src/cli/duplicatePromptGuard.js";
 import { resolveRemoteServiceConfig } from "../src/remote/remoteServiceConfig.js";
@@ -1460,6 +1461,8 @@ async function runRootCommand(options: CliOptions): Promise<void> {
     const source = program.getOptionValueSource?.(name);
     return source == null || source === "default";
   };
+  const modelProvided = !optionUsesDefault("model");
+  const browserThinkingTimeProvided = !optionUsesDefault("browserThinkingTime");
   if (helpRequested) {
     if (options.verbose) {
       console.log("");
@@ -1558,6 +1561,7 @@ async function runRootCommand(options: CliOptions): Promise<void> {
   if (optionUsesDefault("model") && userConfig.model) {
     options.model = userConfig.model;
   }
+  applyImageGenerationDefaults(options, modelProvided);
   if (optionUsesDefault("search") && userConfig.search) {
     options.search = userConfig.search === "on";
   }
@@ -1873,6 +1877,14 @@ async function runRootCommand(options: CliOptions): Promise<void> {
   const getSource = (key: keyof CliOptions) =>
     program.getOptionValueSource?.(key as string) ?? undefined;
   applyBrowserDefaultsFromConfig(options, userConfig, getSource, resolvedModel);
+  if (
+    !modelProvided &&
+    !browserThinkingTimeProvided &&
+    options.generateImages &&
+    !options.editImage
+  ) {
+    options.browserThinkingTime = "standard";
+  }
 
   const notifications = resolveNotificationSettings({
     cliNotify: options.notify,

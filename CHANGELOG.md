@@ -5,6 +5,7 @@
 ### Added
 
 - Browser: add ChatGPT UI image generation with `--generate-images`, `--aspect-ratio 1:1|3:4|9:16|4:3|16:9`, and `--output`, saving every generated image into the session/output path while selecting image/aspect controls through the ChatGPT UI.
+- CLI: default `--generate-image <path>` without `--model` to ChatGPT/OpenAI image mode using GPT-5.5 Thinking with standard thinking time, while keeping explicit Gemini model runs on the Gemini image path.
 
 ## 0.9.0 — 2026-03-08
 
